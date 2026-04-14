@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Medical Tracker</title>
+    <style>
+        body {
+            margin: 20px;
+        }
+        nav button {
+            margin-right: 10px;
+        }
+        .hidden {
+            display: none;
+        }
+        table {
+            width: 60%;
+            margin: 40px auto;
+            border-collapse: collapse;
+            font-family: Arial, sans-serif;
+        }
+
+        th {
+            background-color: #4a90d9;
+            color: white;
+            padding: 12px 16px;
+            text-align: center;
+            border: 1px solid #ccc;
+        }
+
+        td {
+            padding: 10px 16px;
+            text-align: center;
+        }
+
+        tr {
+            border: 1px solid grey;
+        }
+        .container {
+            margin-top: 20px;
+        }
+        .flex {
+            display: flex;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+<script>
+    let host = "";
+    let staff = "staff";
+    let currentPatient = null;
+
+    function showPage(id) {
+        document.querySelectorAll('.container').forEach(d => d.classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
+    }
+
+    async function loadPatients() {
+        const res = await fetch(host + '/api/patients');
+        const data = await res.json();
+
+        const patientList = document.querySelector("#patientList ul");
+
+        patientList.innerHTML = '';
+        data.forEach(p => {
+            const li = document.createElement('li');
+            li.innerText = p.fullName;
+            li.onclick = () => loadPatientDetail(p.id);
+            patientList.appendChild(li);
+        });
+    }
+
+    async function loadPatientDetail(id) {
+        currentPatient = id;
+        showPage('patientDetail');
+
+        const res = await fetch(host + `/api/patients/${id}/observations`);
+        const data = await res.json();
+
+        const observationTable = document.querySelector("#observationTable tbody");
+
+        observationTable.innerHTML = '';
+        data.forEach(o => {
+            const row = `<tr>
+              <td>${o.type}</td>
+              <td>${o.phenomenonType?.name || ''}</td>
+              <td>${o.amount || o.presence}</td>
+              <td>${o.unit || ''}</td>
+              <td>${o.status}</td>
+              <td><button onclick="rejectObservation(${o.id})">Reject</button></td>
+            </tr>`;
+            observationTable.innerHTML += row;
+        });
+    }
+
+    async function loadLogs() {
+        const cmd = await (await fetch(host + '/api/command-log')).json();
+        const audit = await (await fetch(host + '/api/audit-log')).json();
+
+        const commandLog = document.querySelector("#commandLog ul");
+        const auditLog = document.querySelector("#auditLog ul");
+
+        commandLog.innerHTML = cmd.map(c => `<li>${c.commandType}</li>`).join('');
+        auditLog.innerHTML = audit.map(a => `<li>${a.event}</li>`).join('');
+    }
+
+    loadPatients();
+    setInterval(loadLogs, 3000);
+</script>
+
+<h1>Medical Tracker</h1>
+
+<nav>
+    <button onclick="showPage('patients')">Patients</button>
+    <button onclick="showPage('catalogue')">Catalogue</button>
+    <button onclick="showPage('logs')">Logs</button>
+</nav>
+
+<div id="patients" class="container">
+    <h2>Patients</h2>
+
+    <form onsubmit="createPatient()">
+        <input id="fullName" placeholder="Full Name" required>
+        <input id="dob" type="date" required>
+        <input id="note" placeholder="Note">
+        <button type="submit">Add Patient</button>
+    </form>
+
+    <ul id="patientList"></ul>
+</div>
+
+<div id="patientDetail" class="container hidden">
+    <h2>Patient Detail</h2>
+    <button onclick="showPage('patients')">Back</button>
+
+    <table id="observationTable">
+        <thead>
+        <tr>
+            <th>Type</th><th>Phenomenon</th><th>Value</th><th>Unit</th><th>Status</th><th>Action</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h3>Measurement</h3>
+    <form onsubmit="recordMeasurement()">
+        <input id="mType" placeholder="Phenomenon Type ID" required>
+        <input id="amount" type="number" placeholder="Amount" required>
+        <input id="unit" placeholder="Unit" required>
+        <input id="attachedProtocol" placeholder="(optional) Used Protocol ID">
+        <button type="submit">Record</button>
+    </form>
+
+    <h3>Category Observation</h3>
+    <form onsubmit="recordCategory()">
+        <input id="phenomenon" placeholder="Phenomenon ID" required>
+        <select id="presence">
+            <option value="PRESENT">PRESENT</option>
+            <option value="ABSENT">ABSENT</option>
+        </select>
+        <button type="submit">Record</button>
+    </form>
+
+    <button onclick="evaluateRules()">Evaluate Rules</button>
+    <ul id="inferenceList"></ul>
+</div>
+
+<div id="catalogue" class="container hidden">
+    <h2>Catalogue</h2>
+
+    <form onsubmit="createPhenomenonType()">
+        <input id="ptypeName" placeholder="Name">
+        <select id="ptypeKind">
+            <option value="QUANT">QUANT</option>
+            <option value="QUAL">QUAL</option>
+        </select>
+        <button type="submit">Add</button>
+    </form>
+
+    <form onsubmit="createProtocol()">
+        <input id="protocolName" placeholder="Name">
+        <input id="protocolDesc" placeholder="Description">
+        <select id="accuracy">
+            <option>HIGH</option>
+            <option>MEDIUM</option>
+            <option>LOW</option>
+        </select>
+        <button type="submit">Add</button>
+    </form>
+</div>
+
+<div id="logs" class="container hidden">
+    <h2>Logs</h2>
+    <div class="flex">
+        <ul id="commandLog"></ul>
+        <ul id="auditLog"></ul>
+    </div>
+</div>
+
+<script>
+
+    async function createPatient() {
+        let fullName = document.getElementById("fullName");
+        let dob = document.getElementById("dob");
+        let note = document.getElementById("note");
+
+        let body = {
+            fullName: fullName.value,
+            dateOfBirth: dob.value,
+            note: note.value,
+            staff: staff
+        };
+
+        let request = {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        };
+
+        await fetch(host + "/api/patients", request);
+        await loadPatients();
+    }
+
+    async function recordMeasurement() {
+        let mType = document.getElementById("mType");
+        let amount = document.getElementById("amount");
+        let unit = document.getElementById("unit");
+        let protocol = document.getElementById("attachedProtocol");
+
+        let body = {
+            patient: currentPatient,
+            phenomenonType: mType.value,
+            amount: amount.value,
+            unit: unit.value,
+            protocol: protocol,
+            staff: staff
+        };
+
+        let request = {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        };
+
+        await fetch(host + "/api/observations/measurement", request);
+        await loadPatientDetail(currentPatient);
+    }
+
+
+    async function recordCategory() {
+        let phenomenon = document.getElementById("phenomenon");
+        let presence = document.getElementById("presence");
+
+        let body = {
+            patient: { id: currentPatient },
+            phenomenon: { id: phenomenon.value },
+            presence: presence.value,
+            staff: staff
+        };
+
+        let request = {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        };
+
+        await fetch(host + "/api/observations/category", request);
+        await loadPatientDetail(currentPatient);
+    }
+
+    async function rejectObservation(id) {
+        let reason = "";
+
+        // keep prompting until user provides non-empty input
+        while (!reason || reason.trim() === "") {
+            reason = prompt("Enter reason for rejection:");
+
+            // if user cancels, stop entirely
+            if (reason === null) {
+                return;
+            }
+        }
+
+        let data = {
+            reason: reason,
+            staff: staff
+        }
+        await fetch(host + `/api/observations/${id}/reject`, { method: "POST", body: JSON.stringify(data) });
+        await loadPatientDetail(currentPatient);
+    }
+
+    async function evaluateRules() {
+        let body = {
+            staff: staff
+        };
+        const res = await fetch(host + `/api/patients/${currentPatient}/evaluate`, { method: 'POST', body: JSON.stringify(body) });
+        const data = await res.json();
+
+        let inferenceList = document.getElementById("inferenceList");
+
+        inferenceList.innerHTML = data.map(d => `<li>${d}</li>`).join('');
+    }
+
+    async function createPhenomenonType() {
+
+        let ptypeName = document.getElementById("ptypeName");
+        let ptypeKind = document.getElementById("ptypeKind");
+
+        let body = {
+            name: ptypeName.value,
+            kind: ptypeKind.value
+        };
+
+        let request = {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        };
+
+        await fetch(host + "/api/phenomenon-types", request);
+    }
+
+    async function createProtocol() {
+        let protocolName = document.getElementById("protocolName");
+        let protocolDesc = document.getElementById("protocolDesc");
+        let accuracy = document.getElementById("accuracy");
+
+        let body = {
+            name: protocolName.value,
+            description: protocolDesc.value,
+            accuracyRating: accuracy.value
+        };
+
+        let request = {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        };
+
+        await fetch(host + "/api/protocols", request);
+    }
+
+</script>
+
+</body>
+</html>
