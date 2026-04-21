@@ -171,6 +171,7 @@ class SimpleConjunctiveStrategyTest {
         Measurement m = new Measurement();
         m.setPhenomenonType(type);
         m.setStatus(ObservationStatus.ACTIVE);
+        m.setSource(Source.MANUAL);
 
         List<Observation> observations = Arrays.asList(m);
 

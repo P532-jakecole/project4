@@ -43,6 +43,7 @@ class WeightedScoringStrategyTest {
         when(feverObs.getStatus()).thenReturn(ObservationStatus.ACTIVE);
         when(feverObs.getPhenomenon()).thenReturn(feverPhen);
         when(feverObs.getPresence()).thenReturn(Presence.PRESENT);
+        when(feverObs.getSource()).thenReturn(Source.MANUAL);
 
         Phenomenon coughPhen = mock(Phenomenon.class);
         when(coughPhen.getName()).thenReturn("Cough");
@@ -51,6 +52,7 @@ class WeightedScoringStrategyTest {
         when(coughObs.getStatus()).thenReturn(ObservationStatus.ACTIVE);
         when(coughObs.getPhenomenon()).thenReturn(coughPhen);
         when(coughObs.getPresence()).thenReturn(Presence.PRESENT);
+        when(coughObs.getSource()).thenReturn(Source.MANUAL);
 
         List<Observation> observations = List.of(feverObs, coughObs);
 
@@ -135,6 +137,7 @@ class WeightedScoringStrategyTest {
         Measurement measurement = mock(Measurement.class);
         when(measurement.getStatus()).thenReturn(ObservationStatus.ACTIVE);
         when(measurement.getPhenomenonType()).thenReturn(type);
+        when(measurement.getSource()).thenReturn(Source.MANUAL);
 
         // Act
         List<Observation> result = strategy.evaluate(rule, List.of(measurement));
@@ -168,6 +171,7 @@ class WeightedScoringStrategyTest {
         when(obs.getStatus()).thenReturn(ObservationStatus.ACTIVE);
         when(obs.getPhenomenon()).thenReturn(phen);
         when(obs.getPresence()).thenReturn(Presence.PRESENT);
+        when(obs.getSource()).thenReturn(Source.MANUAL);
 
         // Act
         List<Observation> result = strategy.evaluate(rule, List.of(obs));
