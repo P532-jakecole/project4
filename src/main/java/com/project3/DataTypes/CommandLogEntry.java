@@ -22,6 +22,18 @@ public class CommandLogEntry {
 
     private String user;
 
+    private Boolean undone = false;
+
+    private Integer observationId;
+
+    public Integer getObservationId() {
+        return observationId;
+    }
+
+    public void setObservationId(Integer observationId) {
+        this.observationId = observationId;
+    }
+
     public Integer getId() {
         return id;
     }
@@ -56,5 +68,13 @@ public class CommandLogEntry {
 
     public void setUser(String user) {
         this.user = user;
+    }
+
+    public Boolean getUndone() {
+        return undone;
+    }
+
+    public void setUndone(Boolean undone) {
+        this.undone = undone;
     }
 }

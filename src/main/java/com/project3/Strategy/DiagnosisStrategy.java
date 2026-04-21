@@ -7,6 +7,6 @@ import java.util.List;
 
 public interface DiagnosisStrategy {
 
-    boolean evaluate(AssociativeFunction rule,
+    List<Observation> evaluate(AssociativeFunction rule,
                      List<Observation> patientObservations);
 }

@@ -75,9 +75,36 @@
     let staff = "staff";
     let currentPatient = null;
 
+    async function loadUserTable() {
+        const res = await fetch(host + "/api/users");
+        const users = await res.json();
+
+        const table = document.querySelector("#userTable tbody");
+        table.innerHTML = "";
+
+        users.forEach(u => {
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
+            <td>${u.username}</td>
+            <td>${u.role}</td>
+        `;
+
+            table.appendChild(row);
+        });
+    }
+
     function showPage(id) {
         document.querySelectorAll('.container').forEach(d => d.classList.add('hidden'));
         document.getElementById(id).classList.remove('hidden');
+
+        if(id === "users"){
+            loadUserTable();
+        }else if(id === "catalogue"){
+            loadCatalogue();
+        }else if(id === "logs"){
+            loadLogs();
+        }
     }
 
     async function loadPatients() {
@@ -115,16 +142,17 @@
         observationTable.innerHTML = '';
         //categoryTable.innerHTML = '';
         data.forEach(o => {
-            console.log(o);
             let recordingTime = o.recordingTime.split("T")[0];
             let applicabilityTime = o.applicabilityTime.split("T")[0];
+            let style = o.source === "INFERRED" ? "font-style: italic;" : "";
+            let anomaly = o.flag ? "ANOMALY" : "";
             let protocol = 'N/A';
             if(o.protocol != null){
                 protocol = o.protocol.name;
             }
             if(o.type == "MEASUREMENT"){
                 const row = `
-                    <tr>
+                    <tr style="${style}">
               <td>${o.type}</td>
               <td>${o.phenomenonType.name}</td>
               <td>${o.amount}</td>
@@ -133,23 +161,24 @@
               <td>${applicabilityTime}</td>
               <td>${protocol}</td>
               <td>${o.status}</td>
+              <td>${anomaly}</td>
               <td><button onclick="rejectObservation(${o.id})">Reject</button></td>
             </tr>
                 `
                 observationTable.innerHTML += row;
             }else{
-                console.log(o.phenomenon);
-                const row = `<tr>
-              <td>${o.type}</td>
-              <td>${o.phenomenon.phenomenonType.name}</td>
-              <td>'N/A'</td>
-              <td>${o.phenomenon.name}</td>
-              <td>${recordingTime}</td>
-              <td>${applicabilityTime}</td>
-              <td>${protocol}</td>
-              <td>${o.status}</td>
-              <td><button onclick="rejectObservation(${o.id})">Reject</button></td>
-            </tr>`;
+                const row = `<tr style="${style}">
+                      <td>${o.type}</td>
+                      <td>${o.phenomenon.phenomenonType.name}</td>
+                      <td>N/A</td>
+                      <td>${o.phenomenon.name}</td>
+                      <td>${recordingTime}</td>
+                      <td>${applicabilityTime}</td>
+                      <td>${protocol}</td>
+                      <td>${o.status}</td>
+                      <td>${anomaly}</td>
+                      <td><button onclick="rejectObservation(${o.id})">Reject</button></td>
+                    </tr>`;
                 observationTable.innerHTML += row;
             }
         });
@@ -166,11 +195,19 @@
         auditLog.innerHTML = ``;
         cmd.forEach(p => {
             let executionTime = p.executedAt.split("T")[0];
+
             const row = document.createElement("tr");
-            row.innerHTML = `
+
+            let undoBtn = p.undone
+                ? "Undone"
+                : `<button onclick="undoCommand(${p.id})">Undo</button>`;
+
+                    row.innerHTML = `
                 <td>${p.commandType}</td>
                 <td>${executionTime}</td>
-            `
+                <td>${undoBtn}</td>
+            `;
+
             commandLog.appendChild(row);
         });
 
@@ -191,8 +228,14 @@
     }
 
     async function loadCatalogue() {
+
+        console.log("Called loadCatalogue")
+
         const phenTypes = await (await fetch(host + '/api/phenomenon-types')).json();
+        console.log("Why")
         const protocols = await (await fetch(host + '/api/protocols')).json();
+
+        console.log("Here")
 
         const typesTable = document.querySelector("#phenomenonTypeTable tbody");
         const protocolTable = document.querySelector("#protocolTable tbody");
@@ -216,6 +259,8 @@
             typesTable.appendChild(row);
         });
 
+        console.log("Here2")
+
         protocols.forEach(p => {
             const row = document.createElement("tr");
             row.innerHTML = `
@@ -231,19 +276,72 @@
         // auditLog.innerHTML = audit.map(a => `<li>${a.event}</li>`).join('');
     }
 
+    async function loadUsers() {
+        const res = await fetch(host + "/api/users");
+        const users = await res.json();
+
+        const select = document.getElementById("userSelect");
+        select.innerHTML = `<option value="">Select User</option>`;
+
+        users.forEach(u => {
+            const option = document.createElement("option");
+            option.value = u.username;
+            option.innerText = `${u.username} (${u.role})`;
+            select.appendChild(option);
+        });
+    }
+
+    function setUser() {
+        staff = document.getElementById("userSelect").value;
+    }
+
     loadPatients();
-    setInterval(loadLogs, 3000);
-    setInterval(loadCatalogue, 3000);
+    loadUsers();
+    loadUserTable();
+    loadLogs();
+    loadCatalogue();
+    // setInterval(loadLogs, 8000);
+    // setInterval(loadCatalogue, 10000);
 </script>
 
 <h1>Medical Tracker</h1>
 
+<select id="userSelect" onchange="setUser()">
+    <option value="">Select User</option>
+</select>
+
 <nav>
+    <button onclick="showPage('users')">Users</button>
     <button onclick="showPage('patients')">Patients</button>
     <button onclick="showPage('catalogue')">Catalogue</button>
     <button onclick="showPage('logs')">Logs</button>
 </nav>
+<div id="users" class="container hidden">
+    <h2>User Management</h2>
 
+    <h3>Add User</h3>
+    <form onsubmit="createUser(event)">
+        <input id="username" placeholder="Username" required>
+
+        <select id="role">
+            <option value="CLINICIAN">CLINICIAN</option>
+            <option value="ADMIN">ADMIN</option>
+        </select>
+
+        <button type="submit">Add User</button>
+    </form>
+
+    <h3>Existing Users</h3>
+    <table id="userTable">
+        <thead>
+        <tr>
+            <th>Username</th>
+            <th>Role</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
 <div id="patients" class="container">
     <h2>Patients</h2>
 
@@ -275,7 +373,7 @@
     <table id="observationTable">
         <thead>
         <tr>
-            <th>Type</th><th>Phenomenon Type</th><th>Value</th><th>Unit/Phenomenon</th><th>Recording Time</th><th>Applicable Time</th><th>Protocol</th><th>Status</th>
+            <th>Type</th><th>Phenomenon Type</th><th>Value</th><th>Unit/Phenomenon</th><th>Recording Time</th><th>Applicable Time</th><th>Protocol</th><th>Status</th><th>Flag</th>
         </tr>
         </thead>
         <tbody></tbody>
@@ -284,7 +382,7 @@
     <h3>Measurement</h3>
     <form onsubmit="recordMeasurement(event)">
         <input id="mType" placeholder="Phenomenon Type ID" required>
-        <input id="amount" type="number" placeholder="Amount" required>
+        <input id="amount" type="number" step="any" placeholder="Amount" required>
         <input id="unit" placeholder="Unit" required>
         <input id="applicabilityTimestamp" type="date" placeholder="Applicable Timestamp">
         <input id="attachedProtocol" placeholder="(optional) Used Protocol ID">
@@ -298,7 +396,7 @@
             <option value="PRESENT">PRESENT</option>
             <option value="ABSENT">ABSENT</option>
         </select>
-        <input id="applicability" type="date" placeholder="Applicable Timestamp">
+        <input id="categoryApplicability" type="date" placeholder="Applicable Timestamp">
         <input id="attachedProtocol2" placeholder="(optional) Used Protocol ID">
         <button type="submit">Record</button>
     </form>
@@ -326,6 +424,13 @@
         </select>
 
         <div id="quantSection">
+            <div id="quantitativeBounds">
+                <label>Lower Bound:</label>
+                <input type="number" step="any" id="lowerBound">
+
+                <label>Upper Bound:</label>
+                <input type="number" step="any" id="upperBound">
+            </div>
             <h4>Allowed Units</h4>
             <div id="unitList"></div>
             <button type="button" onclick="addUnit()">+ Add Unit</button>
@@ -349,6 +454,24 @@
             <option>LOW</option>
         </select>
         <button type="submit">Add</button>
+    </form>
+
+    <h2>Create Associative Function</h2>
+    <form onsubmit="createFunction(event)">
+        <input id="ruleName" placeholder="Rule Name">
+        <input id="productConcept" placeholder="Product Concept">
+
+        <select id="strategyType">
+            <option value="CONJUNCTIVE">CONJUNCTIVE</option>
+            <option value="WEIGHTED">WEIGHTED</option>
+        </select>
+
+        <input id="threshold" type="number" step="any" placeholder="Threshold (for weighted)">
+
+        <div id="ruleArgs"></div>
+        <button type="button" onclick="addRuleArg()">+ Add Argument</button>
+
+        <button type="submit">Create Rule</button>
     </form>
 
     <h3 style="align-self: center;">Phenomenon Types</h3>
@@ -379,7 +502,7 @@
         <table id="commandLog">
             <thead>
             <tr>
-                <th>Command Type</th><th>Execution Time</th>
+                <th>Command Type</th><th>Execution Time</th><th>Undo</th>
             </tr>
             </thead>
             <tbody></tbody>
@@ -396,6 +519,92 @@
 </div>
 
 <script>
+
+    async function createUser(e) {
+        e.preventDefault();
+
+        let username = document.getElementById("username").value;
+        let role = document.getElementById("role").value;
+
+        let body = [
+            username,
+            role
+        ];
+
+        await fetch(host + "/api/users/add", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+
+        await loadUsers();
+        await loadUserTable();
+    }
+
+    async function undoCommand(id) {
+
+        await fetch(host + `/api/command-log/${id}/undo`, {
+            method: "POST",
+            body: JSON.stringify(staff)
+        });
+
+        await loadLogs();
+        if(currentPatient){
+            await loadPatientDetail(currentPatient);
+        }
+    }
+
+    async function createFunction(e) {
+        e.preventDefault();
+
+        let currentRule = document.querySelector("#ruleArgs");
+        let conceptInputs = currentRule.querySelectorAll("input:first-child");
+        let weightInputs = currentRule.querySelectorAll("input:last-child");
+
+        let concepts = [];
+        let weights = [];
+
+        for (let i = 0; i < conceptInputs.length; i++) {
+            let concept = conceptInputs[i].value.trim();
+            let weight = parseFloat(weightInputs[i].value);
+
+            if (concept !== "") {
+                concepts.push(concept);
+                weights.push(isNaN(weight) ? 0 : weight);
+            }
+        }
+
+        console.log(concepts);
+
+        let body = [
+            concepts,
+            weights,
+            document.getElementById("ruleName").value,
+            document.getElementById("productConcept").value,
+            document.getElementById("strategyType").value,
+            document.getElementById("threshold").value
+        ];
+
+        await fetch(host + "/api/rules", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+    }
+
+    function addRuleArg() {
+        let container = document.getElementById("ruleArgs");
+
+        let div = document.createElement("div");
+
+        div.innerHTML = `
+        <input placeholder="Concept">
+        <input type="number" step="any" placeholder="Weight">
+    `;
+
+        container.appendChild(div);
+    }
+
     function addUnit() {
         let container = document.getElementById("unitList");
 
@@ -408,10 +617,34 @@
     function addPhenomenon() {
         let container = document.getElementById("phenomenonList");
 
+        let wrapper = document.createElement("div");
+
         let input = document.createElement("input");
         input.placeholder = "Phenomenon";
 
-        container.appendChild(input);
+        let parent = document.createElement("select");
+        parent.className = "parentSelect";
+
+        wrapper.appendChild(input);
+        wrapper.appendChild(parent);
+
+        container.appendChild(wrapper);
+
+        loadParentOptions(parent);
+    }
+
+    async function loadParentOptions(select) {
+        const res = await fetch(host + "/api/phenomenon");
+        const data = await res.json();
+
+        select.innerHTML = `<option value="">No Parent</option>`;
+
+        data.forEach(p => {
+            let opt = document.createElement("option");
+            opt.value = p.id;
+            opt.innerText = p.name;
+            select.appendChild(opt);
+        });
     }
 
     function togglePhenomenonInputs() {
@@ -440,6 +673,7 @@
 
         await fetch(host + "/api/patients", request);
         await loadPatients();
+        await loadLogs();
     }
 
     async function recordMeasurement(e) {
@@ -474,6 +708,7 @@
 
         await fetch(host + "/api/observations/measurement", request);
         await loadPatientDetail(currentPatient);
+        await loadLogs();
     }
 
 
@@ -482,7 +717,7 @@
 
         let phenomenon = document.getElementById("phenomenon");
         let presence = document.getElementById("presence");
-        let applicability = document.getElementById("applicabilityTimestamp")
+        let applicability = document.getElementById("categoryApplicability")
         if(!applicability.value){
             applicability.value = new Date().toISOString().split("T")[0];
         }
@@ -508,6 +743,7 @@
 
         await fetch(host + "/api/observations/category", request);
         await loadPatientDetail(currentPatient);
+        await loadLogs();
     }
 
     async function rejectObservation(id) {
@@ -535,6 +771,7 @@
             body: JSON.stringify(data)
         });
         await loadPatientDetail(currentPatient);
+        await loadLogs();
     }
 
     // async function evaluateRules() {
@@ -554,6 +791,7 @@
 
     async function evaluateRules() {
         let s = [staff];
+        console.log(staff);
 
         let response = await fetch(host + `/api/patients/${currentPatient}/evaluate`, {
             method: "POST",
@@ -562,6 +800,8 @@
             },
             body: JSON.stringify(s)
         });
+        await loadLogs();
+
         let data = await response.json();
 
         const body = document.getElementById("inferenceBody");
@@ -570,7 +810,18 @@
         data.forEach(item => {
             const div = document.createElement("div");
             div.className = "inference-item";
-            div.innerText = item;
+
+            let evidenceArray = item[2];
+
+            console.log(evidenceArray);
+
+
+            div.innerHTML = `
+                <b>${item[0]}</b><br>
+                Strategy: ${item[1]}<br>
+                Evidence: ${Array.isArray(evidenceArray) ? evidenceArray.join(", ") : "None"}
+            `;
+
             body.appendChild(div);
         });
 
@@ -587,22 +838,35 @@
         let ptypeName = document.getElementById("ptypeName");
         let ptypeKind = document.getElementById("ptypeKind");
         let list;
+        let body;
 
         if(ptypeKind.value === "QUALITATIVE"){
-            list = Array.from(document.querySelectorAll("#phenomenonList input"))
-                .map(i => i.value)
-                .filter(v => v.trim() !== "");
+            list = Array.from(document.querySelectorAll("#phenomenonList div"))
+                .map(div => {
+                    return {
+                        name: div.querySelector("input").value,
+                        parentId: div.querySelector("select").value || null
+                    };
+                });
+            body = [
+                ptypeName.value,
+                ptypeKind.value,
+                list
+            ];
         }else{
             list = Array.from(document.querySelectorAll("#unitList input"))
                 .map(i => i.value)
                 .filter(v => v.trim() !== "");
+            body = [
+                ptypeName.value,
+                ptypeKind.value,
+                list,
+                parseFloat(document.getElementById("lowerBound").value),
+                parseFloat(document.getElementById("upperBound").value)
+            ];
         }
 
-        let body = [
-            ptypeName.value,
-            ptypeKind.value,
-            list
-        ];
+
 
         let request = {
             method: "POST",
@@ -611,6 +875,7 @@
         };
 
         await fetch(host + "/api/phenomenon-types", request);
+        await loadCatalogue();
     }
 
     async function createProtocol(e) {
@@ -633,6 +898,7 @@
         };
 
         await fetch(host + "/api/protocols", request);
+        await loadCatalogue();
     }
 
 </script>

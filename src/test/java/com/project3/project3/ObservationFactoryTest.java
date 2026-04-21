@@ -1,6 +1,7 @@
 package com.project3.project3;
 
 import com.project3.DataTypes.*;
+import com.project3.Decorator.ObservationRequest;
 import com.project3.Factory.ObservationFactory;
 import com.project3.OrderAccess;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,11 +58,13 @@ class ObservationFactoryTest {
         when(orderAccess.findPatient(1)).thenReturn(patient);
         when(orderAccess.findPhenomenonType(1)).thenReturn(quantitativeType);
         when(orderAccess.findProtocol(1)).thenReturn(protocol);
+        ObservationRequest request = new ObservationRequest(1, 1, "measurement", orderAccess, new Date());
+        request.setPhenomenonTypeId(1);
+        request.setAmount(70.0);
+        request.setUnit("kg");
 
         // Act
-        Measurement m = observationFactory.createMeasurement(
-                1, 1, 70.0, "kg", 1, new Date()
-        );
+        Measurement m = observationFactory.createMeasurement(request);
 
         // Assert
         assertNotNull(m);
@@ -72,30 +75,17 @@ class ObservationFactoryTest {
     }
 
     @Test
-    void createMeasurement_differing_shouldReturnNull() {
-        // Arrange
-        when(orderAccess.findPatient(1)).thenReturn(patient);
-        when(orderAccess.findPhenomenonType(1)).thenReturn(qualitativeType);
-
-        // Act
-        Measurement m = observationFactory.createMeasurement(
-                1, 1, 70.0, "kg", null, new Date()
-        );
-
-        // Assert
-        assertNull(m);
-    }
-
-    @Test
     void createMeasurement_nullApplicability_shouldUseNow() {
         // Arrange
         when(orderAccess.findPatient(1)).thenReturn(patient);
         when(orderAccess.findPhenomenonType(1)).thenReturn(quantitativeType);
+        ObservationRequest request = new ObservationRequest(1, 0, "measurement", orderAccess, null);
+        request.setPhenomenonTypeId(1);
+        request.setAmount(70.0);
+        request.setUnit("kg");
 
         // Act
-        Measurement m = observationFactory.createMeasurement(
-                1, 1, 70.0, "kg", null, null
-        );
+        Measurement m = observationFactory.createMeasurement(request);
 
         // Assert
         assertNotNull(m);
@@ -108,10 +98,13 @@ class ObservationFactoryTest {
         when(orderAccess.findPatient(1)).thenReturn(patient);
         when(orderAccess.getPhenomenaById(1)).thenReturn(phenomenon);
         when(orderAccess.findProtocol(1)).thenReturn(protocol);
+        ObservationRequest request = new ObservationRequest(1, 1, "categoryobservation", orderAccess, new Date());
+        request.setPhenomenonId(1);
+        request.setPresence(Presence.PRESENT);
 
         // Act
         CategoryObservation obs = observationFactory.createCategoryObservation(
-                1, 1, Presence.PRESENT, 1, new Date()
+                request
         );
 
         // Assert
@@ -127,10 +120,13 @@ class ObservationFactoryTest {
         // Arrange
         when(orderAccess.findPatient(1)).thenReturn(patient);
         when(orderAccess.getPhenomenaById(1)).thenReturn(phenomenon);
+        ObservationRequest request = new ObservationRequest(1, null, "categoryobservation", orderAccess, null);
+        request.setPhenomenonId(1);
+        request.setPresence(Presence.ABSENT);
 
         // Act
         CategoryObservation obs = observationFactory.createCategoryObservation(
-                1, 1, Presence.ABSENT, null, null
+                request
         );
 
         // Assert

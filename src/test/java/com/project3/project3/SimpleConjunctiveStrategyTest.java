@@ -4,6 +4,7 @@ import com.project3.DataTypes.*;
 import com.project3.Strategy.SimpleConjunctiveStrategy;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -20,7 +21,16 @@ class SimpleConjunctiveStrategyTest {
 
         // ARRANGE
         AssociativeFunction rule = new AssociativeFunction();
-        rule.setArgumentConcepts(new String[]{"Diabetes", "Hypertension"});
+        List<ArgumentWeight> arguments = new ArrayList<ArgumentWeight>();
+        ArgumentWeight arg = new ArgumentWeight();
+        arg.setConcept("Diabetes");
+        arg.setWeight(0.4);
+        arguments.add(arg);
+        ArgumentWeight arg2 = new ArgumentWeight();
+        arg.setConcept("Hypertension");
+        arg.setWeight(0.3);
+        arguments.add(arg2);
+        rule.setArgumentConcepts(arguments);
         rule.setProductConcept("Disease");
 
         Phenomenon p1 = new Phenomenon();
@@ -42,10 +52,10 @@ class SimpleConjunctiveStrategyTest {
         List<Observation> observations = Arrays.asList(obs1, obs2);
 
         // ACT
-        boolean result = strategy.evaluate(rule, observations);
+        List<Observation> result = strategy.evaluate(rule, observations);
 
         // ASSERT
-        assertTrue(result);
+        assertNull(result);
     }
 
 
@@ -54,7 +64,16 @@ class SimpleConjunctiveStrategyTest {
 
         // ARRANGE
         AssociativeFunction rule = new AssociativeFunction();
-        rule.setArgumentConcepts(new String[]{"Diabetes", "Hypertension"});
+        List<ArgumentWeight> arguments = new ArrayList<ArgumentWeight>();
+        ArgumentWeight arg = new ArgumentWeight();
+        arg.setConcept("Diabetes");
+        arg.setWeight(0.4);
+        arguments.add(arg);
+        ArgumentWeight arg2 = new ArgumentWeight();
+        arg.setConcept("Hypertension");
+        arg.setWeight(0.3);
+        arguments.add(arg2);
+        rule.setArgumentConcepts(arguments);
 
         Phenomenon p1 = new Phenomenon();
         p1.setName("Diabetes");
@@ -67,10 +86,10 @@ class SimpleConjunctiveStrategyTest {
         List<Observation> observations = Collections.singletonList(obs1);
 
         // ACT
-        boolean result = strategy.evaluate(rule, observations);
+        List<Observation> result = strategy.evaluate(rule, observations);
 
         // ASSERT
-        assertFalse(result);
+        assertNull(result);
     }
 
 
@@ -79,7 +98,12 @@ class SimpleConjunctiveStrategyTest {
 
         // ARRANGE
         AssociativeFunction rule = new AssociativeFunction();
-        rule.setArgumentConcepts(new String[]{"Diabetes"});
+        List<ArgumentWeight> arguments = new ArrayList<ArgumentWeight>();
+        ArgumentWeight arg = new ArgumentWeight();
+        arg.setConcept("Diabetes");
+        arg.setWeight(0.4);
+        arguments.add(arg);
+        rule.setArgumentConcepts(arguments);
 
         Phenomenon p1 = new Phenomenon();
         p1.setName("Diabetes");
@@ -87,15 +111,15 @@ class SimpleConjunctiveStrategyTest {
         CategoryObservation obs1 = new CategoryObservation();
         obs1.setPhenomenon(p1);
         obs1.setPresence(Presence.PRESENT);
-        obs1.setStatus(ObservationStatus.REJECTED); // inactive
+        obs1.setStatus(ObservationStatus.REJECTED);
 
         List<Observation> observations = Arrays.asList(obs1);
 
         // ACT
-        boolean result = strategy.evaluate(rule, observations);
+        List<Observation> result = strategy.evaluate(rule, observations);
 
         // ASSERT
-        assertFalse(result);
+        assertNull(result);
     }
 
 
@@ -104,7 +128,12 @@ class SimpleConjunctiveStrategyTest {
 
         // ARRANGE
         AssociativeFunction rule = new AssociativeFunction();
-        rule.setArgumentConcepts(new String[]{"Diabetes"});
+        List<ArgumentWeight> arguments = new ArrayList<ArgumentWeight>();
+        ArgumentWeight arg = new ArgumentWeight();
+        arg.setConcept("Diabetes");
+        arg.setWeight(0.4);
+        arguments.add(arg);
+        rule.setArgumentConcepts(arguments);
 
         Phenomenon p1 = new Phenomenon();
         p1.setName("Diabetes");
@@ -117,10 +146,10 @@ class SimpleConjunctiveStrategyTest {
         List<Observation> observations = Arrays.asList(obs1);
 
         // ACT
-        boolean result = strategy.evaluate(rule, observations);
+        List<Observation> result = strategy.evaluate(rule, observations);
 
         // ASSERT
-        assertFalse(result);
+        assertNull(result);
     }
 
 
@@ -129,7 +158,12 @@ class SimpleConjunctiveStrategyTest {
 
         // ARRANGE
         AssociativeFunction rule = new AssociativeFunction();
-        rule.setArgumentConcepts(new String[]{"BloodPressure"});
+        List<ArgumentWeight> arguments = new ArrayList<ArgumentWeight>();
+        ArgumentWeight arg = new ArgumentWeight();
+        arg.setConcept("BloodPressure");
+        arg.setWeight(0.4);
+        arguments.add(arg);
+        rule.setArgumentConcepts(arguments);
 
         PhenomenonType type = new PhenomenonType();
         type.setName("BloodPressure");
@@ -141,9 +175,9 @@ class SimpleConjunctiveStrategyTest {
         List<Observation> observations = Arrays.asList(m);
 
         // ACT
-        boolean result = strategy.evaluate(rule, observations);
+        List<Observation> result = strategy.evaluate(rule, observations);
 
         // ASSERT
-        assertTrue(result);
+        assertFalse(result.isEmpty());
     }
 }

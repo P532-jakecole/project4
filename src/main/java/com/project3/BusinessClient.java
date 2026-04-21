@@ -39,6 +39,24 @@ public class BusinessClient {
         }
     }
 
+    @GetMapping("/users")
+    public ArrayList<User> getUsers() {
+        try{
+            return patientManager.getUsers();
+        }catch (Exception e){
+            throw new RuntimeException(e);
+        }
+    }
+
+    @PostMapping("/users/add")
+    public void createUser(@RequestBody Object[] input) {
+        try{
+            patientManager.addUser(input);
+        }catch (Exception e){
+            throw new RuntimeException(e);
+        }
+    }
+
     @GetMapping("/patients/{id}/observations")
     public ArrayList<Observation> getObservations(@PathVariable int id) {
         try{
@@ -49,16 +67,16 @@ public class BusinessClient {
     }
 
     @PostMapping("/patients")
-    public void createPatients(@RequestBody Object[] patient) {
+    public int createPatients(@RequestBody Object[] patient) {
         try{
-            patientManager.createPatients(patient);
+            return patientManager.createPatients(patient);
         }catch (Exception e){
             throw new RuntimeException(e);
         }
     }
 
     @PostMapping("/patients/{id}/evaluate")
-    public ArrayList<String> evaluatePatient(@PathVariable Integer id, @RequestBody String staff) {
+    public ArrayList<Object[]> evaluatePatient(@PathVariable Integer id, @RequestBody String staff) {
         try{
             return patientManager.evaluatePatient(id, staff);
         }catch (Exception e){
@@ -68,27 +86,27 @@ public class BusinessClient {
 
 
     @PostMapping("/observations/measurement")
-    public void recordMeasurement(@RequestBody Object[] measurement) {
+    public int recordMeasurement(@RequestBody Object[] measurement) {
         try{
-            observationManager.recordMeasurement(measurement);
+            return observationManager.recordMeasurement(measurement);
         }catch (Exception e){
             throw new RuntimeException(e);
         }
     }
 
     @PostMapping("/observations/category")
-    public void recordCategoryObservation(@RequestBody Object[] categoryObservation) {
+    public int recordCategoryObservation(@RequestBody Object[] categoryObservation) {
         try{
-            observationManager.recordCategoryObservation(categoryObservation);
+            return observationManager.recordCategoryObservation(categoryObservation);
         }catch (Exception e){
             throw new RuntimeException(e);
         }
     }
 
     @PostMapping("/observations/{id}/reject")
-    public void rejectObservation(@PathVariable Integer id, @RequestBody String[] reasonStaff) {
+    public int rejectObservation(@PathVariable Integer id, @RequestBody String[] reasonStaff) {
         try{
-            observationManager.rejectObservation(id, reasonStaff[0], reasonStaff[1]);
+            return observationManager.rejectObservation(id, reasonStaff[0], reasonStaff[1]);
         }catch (Exception e){
             throw new RuntimeException(e);
         }
@@ -105,10 +123,15 @@ public class BusinessClient {
 
     @PostMapping("/phenomenon-types")
     public void createPhenomenonType(@RequestBody Object[] type) {
+        observationManager.createPhenomenonType(type);
+    }
+
+    @GetMapping("/phenomenon")
+    public ArrayList<Phenomenon> getPhenomenon(){
         try{
-            observationManager.createPhenomenonType(type);
+            return (ArrayList<Phenomenon>) observationManager.getPhenomenon();
         }catch (Exception e){
-            throw new RuntimeException(e);
+            throw new RuntimeException();
         }
     }
 
@@ -139,10 +162,28 @@ public class BusinessClient {
         }
     }
 
+    @PostMapping("/command-log/{id}/undo")
+    public int undoCommand(@PathVariable Integer id, @RequestBody String user) {
+        try{
+            return observationManager.undoCommand(id, user);
+        }catch (Exception e){
+            throw new RuntimeException(e);
+        }
+    }
+
     @GetMapping("/audit-log")
     public ArrayList<AuditLogEntry> viewAuditLog() {
         try{
             return commandLog.getAuditLog();
+        }catch (Exception e){
+            throw new RuntimeException(e);
+        }
+    }
+
+    @PostMapping("/rules")
+    public void createRule(@RequestBody Object[] input) {
+        try{
+            observationManager.createAssociativeFunction(input);
         }catch (Exception e){
             throw new RuntimeException(e);
         }

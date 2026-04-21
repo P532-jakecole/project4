@@ -26,6 +26,10 @@ public abstract class Observation {
     @Enumerated(EnumType.STRING)
     private ObservationStatus status;
 
+    private Source source;
+
+    private String flag;
+
     public Integer getId() { return id; }
 
     public Patient getPatient() { return patient; }
@@ -44,6 +48,12 @@ public abstract class Observation {
 
     public ObservationStatus getStatus() { return status; }
     public void setStatus(ObservationStatus status) { this.status = status; }
+
+    public Source getSource() { return source; }
+    public void setSource(Source source) { this.source = source; }
+
+    public String getFlag() { return flag; }
+    public void setFlag(String flag) { this.flag = flag; }
 
     public String getType() {
         return this instanceof Measurement ? "MEASUREMENT" : "CATEGORY";

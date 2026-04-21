@@ -3,11 +3,11 @@ package com.project3;
 import com.project3.DataTypes.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
 
-import java.util.ArrayList;
-import java.util.Date;
+import java.util.*;
 
 @Repository
 @Transactional
@@ -49,6 +49,12 @@ public class OrderAccess {
     public ArrayList<PhenomenonType> findAllPhenomenonTypes() {
         return (ArrayList<PhenomenonType>) entityManager
                 .createQuery("from PhenomenonType", PhenomenonType.class)
+                .getResultList();
+    }
+
+    public ArrayList<Phenomenon> getPhenomenon() {
+        return (ArrayList<Phenomenon>) entityManager
+                .createQuery("from Phenomenon ", Phenomenon.class)
                 .getResultList();
     }
 
@@ -137,14 +143,56 @@ public class OrderAccess {
         return null;
     }
 
-    public AssociativeFunction createAssociativeFunction(String name, String[] args, String product) {
+    public void setActiveObservationStatus(Integer observationId) {
+        Observation obs = entityManager.find(Observation.class, observationId);
+        if (obs != null) {
+            obs.setStatus(ObservationStatus.ACTIVE);
+            entityManager.merge(obs);
+        }
+    }
+
+    public AssociativeFunction createAssociativeFunction(String name, List<ArgumentWeight> args, String product, String strategy) {
         AssociativeFunction f = new AssociativeFunction();
         f.setName(name);
         f.setArgumentConcepts(args);
         f.setProductConcept(product);
+        switch (strategy.toLowerCase()){
+            case "conjunctive":
+                f.setStrategy(Strategy.CONJUNCTIVE);
+                break;
+            default:
+                f.setStrategy(Strategy.WEIGHTED);
+        }
 
         entityManager.persist(f);
         return f;
+    }
+
+    public Observation getObservation(Integer observationId) {
+        return entityManager.find(Observation.class, observationId);
+    }
+
+    public boolean existsObservation(Integer patientId, Integer phenomenonId, Presence presence) {
+        return !entityManager.createQuery(
+                        "from CategoryObservation o where o.patient.id = :pid and o.phenomenon.id = :phid and o.presence = :p and o.status = 'ACTIVE'",
+                        CategoryObservation.class)
+                .setParameter("pid", patientId)
+                .setParameter("phid", phenomenonId)
+                .setParameter("p", presence)
+                .getResultList()
+                .isEmpty();
+    }
+
+    public List<Phenomenon> findChildren(Integer parentId) {
+        return entityManager.createQuery(
+                        "from Phenomenon p where p.parentConcept.id = :id",
+                        Phenomenon.class)
+                .setParameter("id", parentId)
+                .getResultList();
+    }
+
+    public void addAssociativeFunction(AssociativeFunction af){
+        entityManager.persist(af);
     }
 
     public ArrayList<AssociativeFunction> findAllAssociativeFunctions() {
@@ -162,5 +210,33 @@ public class OrderAccess {
 
         entityManager.persist(entry);
         return entry;
+    }
+
+    public void addUser(User user) {
+        entityManager.persist(user);
+    }
+
+    public User getUser(Integer id) {
+        return entityManager.find(User.class, id);
+    }
+
+    public User getUserByUsername(String username) {
+        return entityManager.createQuery(
+                        "from User u where u.username = :username",
+                        User.class)
+                .setParameter("username", username)
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
+    }
+
+    public ArrayList<User> getUsers() {
+        return (ArrayList<User>) entityManager
+                .createQuery("from User", User.class)
+                .getResultList();
+    }
+
+    public void flush(){
+        entityManager.flush();
     }
 }

@@ -8,7 +8,8 @@ import jakarta.persistence.*;
 public class Phenomenon {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "INTEGER")
     private Integer id;
 
     private String name;
@@ -16,6 +17,11 @@ public class Phenomenon {
     @JsonIgnoreProperties("phenomena")
     @ManyToOne
     private PhenomenonType phenomenonType;
+
+    @ManyToOne
+    @JsonIgnoreProperties("children")
+    @JoinColumn(name = "parent_id")
+    private Phenomenon parentConcept;
 
     public Integer getId() {
         return id;
@@ -36,4 +42,13 @@ public class Phenomenon {
     public void setPhenomenonType(PhenomenonType phenomenonType) {
         this.phenomenonType = phenomenonType;
     }
+
+    public Phenomenon getParentConcept() {
+        return parentConcept;
+    }
+
+    public void setParentConcept(Phenomenon parentConcept) {
+        this.parentConcept = parentConcept;
+    }
+
 }

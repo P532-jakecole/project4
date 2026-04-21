@@ -8,41 +8,43 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
-@Component("CONJUNCTIVE")
-public class SimpleConjunctiveStrategy implements DiagnosisStrategy{
+@Component("WEIGHTED")
+public class WeightedScoringStrategy implements DiagnosisStrategy{
     @Override
     public List<Observation> evaluate(AssociativeFunction rule, List<Observation> patientObservations) {
         List<ArgumentWeight> arguments = rule.getArgumentConcepts();
         List<Observation> observations = new ArrayList<>();
+        Double threshold = rule.getThreshold();
+        Double total = 0.0;
         Date current = new Date();
 
-        boolean currentFound;
         for(ArgumentWeight argument : arguments){
             String arg = argument.getConcept();
+            Double weight = argument.getWeight();
 
-            currentFound = false;
             for(Observation obs : patientObservations){
                 if(obs.getStatus() == ObservationStatus.ACTIVE && obs.getSource() == Source.MANUAL){
                     if(obs instanceof CategoryObservation){
                         if(Objects.equals(((CategoryObservation) obs).getPhenomenon().getName(), arg)  && ((CategoryObservation) obs).getPresence() == Presence.PRESENT){
-                            currentFound = true;
+                            total += weight;
                             observations.add(obs);
                             break;
                         }
                     }else if(obs instanceof Measurement){
                         if(Objects.equals(((Measurement) obs).getPhenomenonType().getName(), arg)){
-                            currentFound = true;
+                            total += weight;
                             observations.add(obs);
                             break;
                         }
                     }
                 }
             }
-            if(!currentFound){
-                return null;
-            }
         }
 
-        return observations;
+        if(total > threshold){
+            return observations;
+        }else{
+            return null;
+        }
     }
 }

@@ -1,6 +1,8 @@
 package com.project3.DataTypes;
 
 import jakarta.persistence.*;
+
+import java.util.ArrayList;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
@@ -20,8 +22,11 @@ public class PhenomenonType {
     private List<String> allowedUnits;
 
     @JsonManagedReference
-    @OneToMany(mappedBy = "phenomenonType", cascade = CascadeType.ALL)
-    private List<Phenomenon> phenomena;
+    @OneToMany(mappedBy = "phenomenonType")
+    private List<Phenomenon> phenomena = new ArrayList<>();
+
+    private Double normalMin;
+    private Double normalMax;
 
     public Integer getId() { return id; }
 
@@ -36,4 +41,17 @@ public class PhenomenonType {
 
     public List<Phenomenon> getPhenomena() { return phenomena; }
     public void setPhenomena(List<Phenomenon> phenomena) { this.phenomena = phenomena; }
+    public void addPhenomenon(Phenomenon p) {
+        if (phenomena == null) {
+            phenomena = new ArrayList<>();
+        }
+        phenomena.add(p);
+        p.setPhenomenonType(this);
+    }
+
+    public Double getNormalMin() { return normalMin; }
+    public void setNormalMin(Double normalMin) { this.normalMin = normalMin; }
+
+    public Double getNormalMax() { return normalMax; }
+    public void setNormalMax(Double normalMax) { this.normalMax = normalMax; }
 }

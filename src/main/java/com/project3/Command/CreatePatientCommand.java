@@ -14,6 +14,8 @@ public class CreatePatientCommand implements Command {
     public String note;
     public Date timestamp;
 
+    public Integer patientId;
+
     public CreatePatientCommand(Object[] inputs, OrderAccess orderAccess, String staff) {
         this.name = (String) inputs[0];
         LocalDate localDate = LocalDate.parse(inputs[1].toString());
@@ -32,10 +34,11 @@ public class CreatePatientCommand implements Command {
         p.setDateOfBirth(dob);
         p.setNote(note);
         orderAccess.addPatient(p);
+        patientId = p.getId();
     }
 
     @Override
     public void undo() {
-
+        throw new UnsupportedOperationException("Not supported");
     }
 }

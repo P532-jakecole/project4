@@ -11,7 +11,9 @@ import com.project3.Managers.PatientManager;
 import com.project3.OrderAccess;
 import com.project3.Strategy.DiagnosisEngine;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -32,31 +34,38 @@ public class RuleEvaluationListener {
     }
 
     @EventListener
+    @Async
+    @Transactional
     public void onObservationCreated(RecordObservationCommand observation) {
         Integer observationId = observation.observationId;
         Integer patientId = observation.patientId;
-        ArrayList<Observation> observations = orderAccess.getObservationsByPatient(patientId);
 
         Date inferenceTime = new Date();
 
-
-
-        ArrayList<String> inferences = patientManager.evaluatePatient(patientId, observation.staff);
-        for(String inference : inferences) {
-            commandLog.addAuditLogString("Inference: " + inference, observationId, patientId, inferenceTime);
+        ArrayList<Object[]> inferences = patientManager.evaluatePatient(patientId, observation.staff);
+        for(Object[] inference : inferences) {
+            boolean alreadyInferred = commandLog.checkAuditLogEntered(patientId, inference[0].toString());
+            if(!alreadyInferred) {
+                commandLog.addAuditLogString("Inference: " + inference[0], observationId, patientId, inferenceTime);
+            }
         }
     }
 
     @EventListener
+    @Transactional
+    @Async
     public void onObservationRejection(RejectObservationCommand rejectCommand) {
         Integer observationId = rejectCommand.observationId;
         Integer patientId = rejectCommand.patientId;
 
         Date inferenceTime = new Date();
 
-        ArrayList<String> inferences = patientManager.evaluatePatient(patientId, rejectCommand.staff);
-        for(String inference : inferences) {
-            commandLog.addAuditLogString("Inference: " + inference, observationId, patientId, inferenceTime);
+        ArrayList<Object[]> inferences = patientManager.evaluatePatient(patientId, rejectCommand.staff);
+        for(Object[] inference : inferences) {
+            boolean alreadyInferred = commandLog.checkAuditLogEntered(patientId, inference[0].toString());
+            if(!alreadyInferred) {
+                commandLog.addAuditLogString("Inference: " + inference[0], observationId, patientId, inferenceTime);
+            }
         }
     }
 }

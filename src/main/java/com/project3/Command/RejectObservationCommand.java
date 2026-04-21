@@ -31,6 +31,7 @@ public class RejectObservationCommand implements Command {
 
     @Override
     public void undo() {
-
+        this.timestamp = new Date();
+        orderAccess.setActiveObservationStatus(observationId);
     }
 }

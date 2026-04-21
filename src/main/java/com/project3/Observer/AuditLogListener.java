@@ -4,6 +4,7 @@ import com.project3.Command.RecordObservationCommand;
 import com.project3.Command.RejectObservationCommand;
 import com.project3.CommandLog;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -18,6 +19,7 @@ public class AuditLogListener {
     }
 
     @EventListener
+    @Async
     public void onObservationCreated(RecordObservationCommand observation) {
         String event = "Record";
         Integer observationId = observation.observationId;
@@ -27,6 +29,7 @@ public class AuditLogListener {
     }
 
     @EventListener
+    @Async
     public void onObservationRejection(RejectObservationCommand rejectCommand) {
         String event = "Rejected";
         Integer patientId = rejectCommand.patientId;

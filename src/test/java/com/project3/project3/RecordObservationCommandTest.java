@@ -3,12 +3,15 @@ package com.project3.project3;
 import com.project3.Command.*;
 
 import com.project3.DataTypes.*;
+import com.project3.Decorator.ObservationRequest;
 import com.project3.Factory.ObservationFactory;
 import com.project3.OrderAccess;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -27,18 +30,27 @@ class RecordObservationCommandTest {
 
 
     @Test
-    void execute_shouldCreateAndPersistMeasurement() {
+    void execute_shouldCreateAndPersistMeasurement() throws Exception {
 
         // ARRANGE
         Object[] inputs = new Object[]{
                 "1", "2", "12.5", "kg", "", "staff", "2026-04-14"
         };
 
+        PhenomenonType pt = new PhenomenonType();
+        pt.setNormalMin(10.0);
+        pt.setNormalMax(20.0);
+        List<String> units = new ArrayList<>();
+        units.add("kg");
+        pt.setAllowedUnits(units);
+
         Measurement measurement = new Measurement();
 
         when(observationFactory.createMeasurement(
-                anyInt(), anyInt(), anyDouble(), anyString(), any(), any(Date.class)
+                any(ObservationRequest.class)
         )).thenReturn(measurement);
+
+        when(orderAccess.findPhenomenonType(2)).thenReturn(pt);
 
         doAnswer(invocation -> {
             Measurement m = invocation.getArgument(0);
@@ -58,7 +70,7 @@ class RecordObservationCommandTest {
 
 
     @Test
-    void execute_shouldCreateAndPersistCategoryObservation() {
+    void execute_shouldCreateAndPersistCategoryObservation() throws Exception {
 
         // ARRANGE
         Object[] inputs = new Object[]{
@@ -68,7 +80,7 @@ class RecordObservationCommandTest {
         CategoryObservation obs = new CategoryObservation();
 
         when(observationFactory.createCategoryObservation(
-                anyInt(), anyInt(), any(), any(), any(Date.class)
+                any(ObservationRequest.class)
         )).thenReturn(obs);
 
         doAnswer(invocation -> {
@@ -89,14 +101,23 @@ class RecordObservationCommandTest {
 
 
     @Test
-    void execute_shouldNotPersist_whenFactoryReturnsNull() {
+    void execute_shouldNotPersist_whenFactoryReturnsNull() throws Exception {
 
         // ARRANGE
         Object[] inputs = new Object[]{
                 "1", "2", "12.5", "kg", "", "staff", "2026-04-14"
         };
 
-        when(observationFactory.createMeasurement(any(), any(), any(), any(), any(), any()))
+        PhenomenonType pt = new PhenomenonType();
+        pt.setNormalMin(10.0);
+        pt.setNormalMax(20.0);
+        List<String> units = new ArrayList<>();
+        units.add("kg");
+        pt.setAllowedUnits(units);
+
+        when(orderAccess.findPhenomenonType(2)).thenReturn(pt);
+
+        when(observationFactory.createMeasurement(any(ObservationRequest.class)))
                 .thenReturn(null);
 
         RecordObservationCommand command =
@@ -112,14 +133,14 @@ class RecordObservationCommandTest {
 
 
     @Test
-    void execute_shouldHandleCategoryBranchOnly() {
+    void execute_shouldHandleCategoryBranchOnly() throws Exception {
 
         // ARRANGE
         Object[] inputs = new Object[]{
                 "1", "2", "absent", "3", "2026-04-14", "staff"
         };
 
-        when(observationFactory.createCategoryObservation(any(), any(), any(), any(), any()))
+        when(observationFactory.createCategoryObservation(any(ObservationRequest.class)))
                 .thenReturn(new CategoryObservation());
 
         RecordObservationCommand command =
@@ -131,5 +152,26 @@ class RecordObservationCommandTest {
         // ASSERT
         verify(orderAccess).addCategoryObservation(any());
         verify(orderAccess, never()).addMeasurement(any());
+    }
+
+    @Test
+    void undo_commandSuccess(){
+        // ARRANGE
+        Object[] inputs = new Object[]{
+                102,"252","PRESENT","","2026-04-21","Bucko", 10
+        };
+
+        when(observationFactory.createCategoryObservation(any(ObservationRequest.class)))
+                .thenReturn(new CategoryObservation());
+
+        RecordObservationCommand command =
+                new RecordObservationCommand(inputs, observationFactory, orderAccess, "staff", "categoryobservation");
+
+        // ACT
+        command.undo();
+
+        // ASSERT
+
+        assertEquals(command.observationId, 10);
     }
 }

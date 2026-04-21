@@ -97,4 +97,28 @@ class CreatePatientCommandTest {
 
         assertEquals("", captor.getValue().getNote());
     }
+
+    @Test
+    void fail_patientUndo() {
+
+        // ARRANGE
+        Object[] inputs = new Object[]{
+                "Alice Smith",
+                "2025-12-12",
+                ""
+        };
+
+        CreatePatientCommand command =
+                new CreatePatientCommand(inputs, orderAccess, "staff1");
+
+        ArgumentCaptor<Patient> captor = ArgumentCaptor.forClass(Patient.class);
+
+        // ACT
+        try {
+            command.undo();
+
+            // ASSERT
+            fail();
+        }catch(Exception e) {}
+    }
 }

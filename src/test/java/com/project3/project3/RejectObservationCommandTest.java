@@ -8,6 +8,8 @@ import com.project3.OrderAccess;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Date;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -44,8 +46,6 @@ class RejectObservationCommandTest {
 
         // ASSERT
         verify(orderAccess, times(1)).rejectObservation(observationId);
-
-        // We only assert behavior, NOT entity ID mutation
         assertEquals(patient, observation.getPatient());
     }
 
@@ -85,5 +85,27 @@ class RejectObservationCommandTest {
         assertEquals(observationId, command.observationId);
         assertEquals(reason, command.reason);
         assertNotNull(command.timestamp);
+    }
+
+    @Test
+    void undo_rejectCommand(){
+        // ARRANGE
+        Integer observationId = 10;
+
+
+        Patient patient = new Patient();
+        patient.setFullName("John Doe");
+
+        Observation observation = mock(Observation.class);
+        when(observation.getPatient()).thenReturn(patient);
+
+        RejectObservationCommand command =
+                new RejectObservationCommand(observationId, "Invalid reading", orderAccess, "staff1");
+
+        // ACT
+        command.undo();
+
+        // ASSERT
+        verify(orderAccess, times(1)).setActiveObservationStatus(observationId);
     }
 }

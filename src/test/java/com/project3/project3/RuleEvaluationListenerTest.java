@@ -53,10 +53,12 @@ class RuleEvaluationListenerTest {
 
         ArrayList<Observation> mockObservations = new ArrayList<>();
         when(orderAccess.getObservationsByPatient(100)).thenReturn(mockObservations);
+        when(commandLog.checkAuditLogEntered(100, "Diabetes Risk")).thenReturn(false);
+        when(commandLog.checkAuditLogEntered(100, "Hypertension Risk")).thenReturn(false);
 
-        ArrayList<String> inferences = new ArrayList<>();
-        inferences.add("Diabetes Risk");
-        inferences.add("Hypertension Risk");
+        ArrayList<Object[]> inferences = new ArrayList<>();
+        inferences.add(new Object[]{"Diabetes Risk", 0.5});
+        inferences.add(new Object[]{"Hypertension Risk", 0.4});
 
         when(patientManager.evaluatePatient(100, "staff1"))
                 .thenReturn(inferences);
@@ -65,8 +67,6 @@ class RuleEvaluationListenerTest {
         listener.onObservationCreated(command);
 
         // ASSERT
-        verify(orderAccess, times(1)).getObservationsByPatient(100);
-
         verify(commandLog, times(1))
                 .addAuditLogString(eq("Inference: Diabetes Risk"), eq(1), eq(100), any(Date.class));
 
@@ -83,8 +83,8 @@ class RuleEvaluationListenerTest {
         command.patientId = 200;
         command.staff = "staff2";
 
-        ArrayList<String> inferences = new ArrayList<>();
-        inferences.add("Rule A Triggered");
+        ArrayList<Object[]> inferences = new ArrayList<>();
+        inferences.add(new Object[]{"Rule A Triggered", 0.4});
 
         when(patientManager.evaluatePatient(200, "staff2"))
                 .thenReturn(inferences);
