@@ -55,6 +55,7 @@ public class ObservationFactory {
         m.setUnit(observation.getUnit());
         m.setProtocol(protocol);
         m.setFlag(observation.getAnomaly());
+        m.setSource(Source.MANUAL);
 
         Date now = new Date();
         m.setRecordingTime(observation.getRecordingTimestamp());
@@ -98,6 +99,7 @@ public class ObservationFactory {
         observation.setPhenomenon(phenomenon);
         observation.setPresence(request.getPresence());
         observation.setProtocol(protocol);
+        observation.setSource(Source.MANUAL);
 
         Date now = new Date();
         observation.setRecordingTime(request.getRecordingTimestamp());

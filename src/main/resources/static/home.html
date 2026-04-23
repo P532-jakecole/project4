@@ -170,7 +170,7 @@
                 const row = `<tr style="${style}">
                       <td>${o.type}</td>
                       <td>${o.phenomenon.phenomenonType.name}</td>
-                      <td>N/A</td>
+                      <td>${o.presence}</td>
                       <td>${o.phenomenon.name}</td>
                       <td>${recordingTime}</td>
                       <td>${applicabilityTime}</td>
@@ -638,6 +638,20 @@
         const data = await res.json();
 
         select.innerHTML = `<option value="">No Parent</option>`;
+
+        data.forEach(p => {
+            let opt = document.createElement("option");
+            opt.value = p.id;
+            opt.innerText = p.name;
+            select.appendChild(opt);
+        });
+    }
+
+    async function loadPhenomenonOptions(select) {
+        const res = await fetch(host + "/api/phenomenon");
+        const data = await res.json();
+
+        select.innerHTML = ``;
 
         data.forEach(p => {
             let opt = document.createElement("option");
