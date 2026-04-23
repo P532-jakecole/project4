@@ -91,7 +91,8 @@ public class RecordObservationCommand implements Command {
     public void undo() {
         this.timestamp = new Date();
         System.out.println(Arrays.toString(inputs));
-        observationId = (Integer) inputs[6];
+        observationId = (Integer) inputs[inputs.length - 1];
+
         RejectObservationCommand rejectCommand = new RejectObservationCommand(observationId, "Undone by user", orderAccess, staff);
         rejectCommand.execute();
     }
