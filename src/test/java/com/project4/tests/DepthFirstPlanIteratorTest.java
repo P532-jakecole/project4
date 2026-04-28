@@ -7,9 +7,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import com.project4.Iterator.DepthFirstPlanIterator;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,13 +14,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
 class DepthFirstPlanIteratorTest {
-
-    private Clock fixedClock;
-
-    @BeforeEach
-    void setup() {
-        fixedClock = Clock.fixed(Instant.parse("2026-04-028T00:00:00Z"), ZoneId.of("UTC"));
-    }
 
     private ProposedAction action(String name) {
         ProposedAction a = new ProposedAction();
