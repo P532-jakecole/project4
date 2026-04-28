@@ -85,7 +85,14 @@
         if (id === "plans") loadPlans();
         if (id === "ledger") loadAccounts();
         if (id === "report") loadReport();
-        if (id === "catalogue") loadCatalogue();
+        if (id === "catalogue"){
+            loadCatalogue();
+            loadProtocols();
+        }
+        if (id === "actions"){
+            loadActions();
+            loadResourceTypes();
+        }
     }
 
 
@@ -99,16 +106,18 @@
         accounts.forEach(a => {
             const row = document.createElement("tr");
 
-            let alert = a.balance < 0 ? "BELOW ZERO" : "";
+            let alert = a.amount < 0 ? "BELOW ZERO" : "";
 
-            row.innerHTML = `
-            <td>${a.name}</td>
-            <td>${a.kind}</td>
-            <td>${a.balance}</td>
-            <td>${alert}</td>
-        `;
+            if(a.kind === "POOL") {
+                row.innerHTML = `
+                    <td>${a.name}</td>
+                    <td>${a.kind}</td>
+                    <td>${a.amount}</td>
+                    <td>${alert}</td>
+                `;
 
-            table.appendChild(row);
+                table.appendChild(row);
+            }
         });
     }
 
@@ -153,11 +162,11 @@
         div.style.marginLeft = (level * 20) + "px";
 
         let type = node.children ? "PLAN" : "ACTION";
-
+        console.log(node.status)
         div.innerHTML = `
         <b>${node.name}</b> (${type}) - ${node.status}
-        ${!node.children ? `<button onclick="selectAction(${node.id})">Open</button>` : ""}
     `;
+        //${!node.children ? `<button onclick="selectAction(${node.id})">Open</button>` : ""}
 
         container.appendChild(div);
 
@@ -167,51 +176,52 @@
     }
 
 
-    async function selectAction(id) {
-        selectedAction = id;
-        showPage("actionDetail");
-
-        const res = await fetch(host + `/api/actions/${id}`);
-        const action = await res.json();
-
-        document.getElementById("actionInfo").innerHTML = `
-        <b>${action.name}</b><br>
-        State: ${action.status}<br>
-        Party: ${action.party || "N/A"}<br>
-        Location: ${action.location || "N/A"}
-    `;
-
-        await loadAllocations(id);
-    }
-
-
-    async function actionTransition(type) {
-        let url = `/api/actions/${selectedAction}/${type}`;
-
-        let body = type === "suspend"
-            ? JSON.stringify(prompt("Reason:"))
-            : null;
-
-        await fetch(host + url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: body
-        });
-
-        await selectAction(selectedAction);
-    }
+    // async function selectAction(id) {
+    //     selectedAction = id;
+    //     showPage("actionDetail");
+    //
+    //     const res = await fetch(host + `/api/actions/${id}`);
+    //     const action = await res.json();
+    //
+    //     document.getElementById("actionInfo").innerHTML = `
+    //     <b>${action.name}</b><br>
+    //     State: ${action.status}<br>
+    //     Party: ${action.party || "N/A"}<br>
+    //     Location: ${action.location || "N/A"}
+    // `;
+    //
+    //     await loadAllocations(id);
+    // }
 
 
-    async function loadAllocations(actionId) {
-        const res = await fetch(host + `/api/actions/${actionId}`);
+    // async function actionTransition(type) {
+    //     let url = `/api/actions/${selectedAction}/${type}`;
+    //
+    //     let body = type === "suspend"
+    //         ? JSON.stringify(prompt("Reason:"))
+    //         : null;
+    //
+    //     await fetch(host + url, {
+    //         method: "POST",
+    //         headers: { "Content-Type": "application/json" },
+    //         body: body
+    //     });
+    //
+    //     await selectAction(selectedAction);
+    // }
+
+
+    async function loadAllocations(actionI) {
+        let actionId = actionI.id;
+        const res = await fetch(host + `/api/actions/${actionId}/allocations`);
         const action = await res.json();
 
         const table = document.querySelector("#allocationTable tbody");
         table.innerHTML = "";
 
-        if (!action.allocations) return;
+        if (!action) return;
 
-        action.allocations.forEach(a => {
+        action.forEach(a => {
             const row = document.createElement("tr");
 
             row.innerHTML = `
@@ -224,25 +234,6 @@
         });
     }
 
-    async function addAllocation(e) {
-        e.preventDefault();
-
-        let body = [
-            document.getElementById("resourceType").value,
-            parseFloat(document.getElementById("quantity").value),
-            document.getElementById("allocKind").value
-        ];
-
-        await fetch(host + `/api/actions/${selectedAction}/allocations`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        });
-
-        await loadAllocations(selectedAction);
-    }
-
-
     async function loadAccounts() {
         const res = await fetch(host + "/api/accounts");
         const accounts = await res.json();
@@ -252,12 +243,12 @@
 
         accounts.forEach(a => {
             const row = document.createElement("tr");
-
+            let amount = (a.type === "POOL") ? a.amount : "-";
             row.innerHTML = `
-            <td>${a.name}</td>
-            <td>${a.balance}</td>
-            <td><button onclick="loadEntries(${a.id})">Entries</button></td>
-        `;
+                <td>${a.name}</td>
+                <td>${amount}</td>
+                <td><button onclick="loadEntries(${a.id})">Entries</button></td>
+            `;
 
             table.appendChild(row);
         });
@@ -277,6 +268,7 @@
             <td>${e.amount}</td>
             <td>${e.chargedAt}</td>
             <td>${e.bookedAt}</td>
+            <td>${e.proposedAction}</td>
         `;
 
             table.appendChild(row);
@@ -341,7 +333,6 @@
             <td>${r.name}</td>
             <td>${r.kind}</td>
             <td>${r.unit}</td>
-            <td>${r.poolAccount?.name || r.poolAccount}</td>
         `;
 
             rtTable.appendChild(row);
@@ -411,6 +402,285 @@
         await loadCatalogue();
     }
 
+    async function loadProtocols() {
+        const res = await fetch(host + "/api/protocols");
+        const data = await res.json();
+
+        const select = document.getElementById("protocolSelect");
+        select.innerHTML = `<option value="">Select Protocol</option>`;
+
+        data.forEach(p => {
+            let opt = document.createElement("option");
+            opt.value = p.id;
+            opt.innerText = p.name;
+            select.appendChild(opt);
+        });
+    }
+
+    async function createPlanFromProtocol(e) {
+        e.preventDefault();
+
+        let body = {
+            name: document.getElementById("planName").value,
+            targetStartDate: document.getElementById("planStart").value
+                ? new Date(document.getElementById("planStart").value).getTime()
+                : null,
+            protocolId: document.getElementById("protocolSelect").value
+        };
+
+        await fetch(host + "/api/plans", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(body)
+        });
+
+        await loadPlans();
+    }
+
+    function addRootNode() {
+        addNode(document.getElementById("planBuilder"));
+    }
+
+    function addNode(container) {
+        let wrapper = document.createElement("div");
+        wrapper.className = "plan-node";
+
+        wrapper.innerHTML = `
+        <select class="nodeType">
+            <option value="ACTION">ACTION</option>
+            <option value="PLAN">PLAN</option>
+        </select>
+
+        <input class="nodeName" placeholder="Name">
+
+        <button type="button" onclick="addChild(this)">+ Child</button>
+        <button type="button" onclick="this.parentElement.remove()">Remove</button>
+
+        <div class="children"></div>
+    `;
+
+        container.appendChild(wrapper);
+    }
+
+    function addChild(btn) {
+        let parent = btn.parentElement;
+        let childrenDiv = parent.querySelector(".children");
+
+        addNode(childrenDiv);
+    }
+
+    async function submitManualPlan() {
+
+        let rootNodes = Array.from(
+            document.getElementById("planBuilder").children
+        ).map(n => buildNodeJSON(n));
+
+        let body = {
+            name: document.getElementById("manualPlanName").value,
+            children: rootNodes
+        };
+
+        await fetch(host + "/api/plans", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(body)
+        });
+
+        await loadPlans();
+    }
+
+    function buildNodeJSON(nodeElement) {
+
+        let type = nodeElement.querySelector(".nodeType").value;
+        let name = nodeElement.querySelector(".nodeName").value;
+
+        let obj = {
+            type: type,
+            name: name
+        };
+
+        let childrenContainer = nodeElement.querySelector(".children");
+
+        if (childrenContainer && childrenContainer.children.length > 0) {
+            obj.children = Array.from(childrenContainer.children)
+                .map(child => buildNodeJSON(child));
+        }
+
+        return obj;
+    }
+
+    async function loadActions() {
+        const res = await fetch(host + "/api/actions");
+        const plans = await res.json();
+
+        let actions = [];
+
+        function extract(node) {
+            if (node.type === "ACTION" || node.status) {
+                actions.push(node);
+            }
+            if (node.children) {
+                node.children.forEach(extract);
+            }
+        }
+
+        plans.forEach(p => extract(p));
+
+        const select = document.getElementById("actionSelect");
+        select.innerHTML = `<option>Select Action</option>`;
+
+        actions.forEach(a => {
+            let opt = document.createElement("option");
+            opt.value = a.id;
+            opt.innerText = a.name;
+            select.appendChild(opt);
+        });
+    }
+
+    async function loadActionDetail() {
+
+        const id = document.getElementById("actionSelect").value;
+
+        const res = await fetch(host + `/api/actions/${id}`);
+        const action = await res.json();
+        console.log(action)
+
+        document.getElementById("actionName").innerText = action.name;
+        document.getElementById("actionState").innerText = action.status;
+
+        renderTransitions(action);
+        renderPlanReality(action);
+        await loadAllocations(action);
+    }
+
+    function renderTransitions(action) {
+
+        const container = document.getElementById("actionTransitions");
+        container.innerHTML = "";
+
+        const transitions = {
+            PROPOSED: ["implement", "suspend", "abandon"],
+            IN_PROGRESS: ["complete", "suspend", "abandon"],
+            SUSPENDED: ["resume", "abandon"],
+            COMPLETED: [],
+            ABANDONED: []
+        };
+
+        let allowed = transitions[action.status] || [];
+
+        allowed.forEach(t => {
+            let btn = document.createElement("button");
+            btn.innerText = t;
+            btn.onclick = () => triggerTransition(action.id, t);
+            container.appendChild(btn);
+        });
+    }
+
+    async function triggerTransition(id, action) {
+
+        let body = {};
+
+        if (action === "suspend") {
+            let reason = prompt("Reason:");
+            body.reason = reason;
+        }
+
+        await fetch(host + `/api/actions/${id}/${action}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+
+        await loadActionDetail();
+    }
+
+    function renderPlanReality(action) {
+
+        const div = document.getElementById("planReality");
+
+        if (action.status != "COMPLETED" || action.status != "IN_PROGRESS") {
+            div.innerHTML = "<i>Not implemented yet</i>";
+            return;
+        }
+
+        const impl = action.implementedAction;
+
+        div.innerHTML = `
+        <b>Planned:</b><br>
+        Party: ${action.party || "N/A"}<br>
+        Location: ${action.location || "N/A"}<br><br>
+
+        <b>Actual:</b><br>
+        Party: ${impl.actualParty || "N/A"}<br>
+        Location: ${impl.actualLocation || "N/A"}<br>
+        Start: ${impl.actualStart || "N/A"}
+    `;
+    }
+
+    async function loadResourceTypes() {
+        const res = await fetch(host + "/api/resource-types");
+        const data = await res.json();
+
+        const select = document.getElementById("allocResourceType");
+        select.innerHTML = "";
+
+        data.forEach(r => {
+            let opt = document.createElement("option");
+            opt.value = r.id;
+            opt.innerText = r.name;
+            select.appendChild(opt);
+        });
+    }
+
+    async function addAllocation(e) {
+        e.preventDefault();
+
+        const actionId = document.getElementById("actionSelect").value;
+
+        let body = {
+            resourceTypeId: document.getElementById("allocResourceType").value,
+            quantity: parseFloat(document.getElementById("allocQty").value),
+            kind: document.getElementById("allocKind").value,
+            assetId: document.getElementById("allocAssetId").value || null,
+            start: document.getElementById("allocStart").value,
+            end: document.getElementById("allocEnd").value
+        };
+
+        await fetch(host + `/api/actions/${actionId}/allocations`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(body)
+        });
+
+        await loadActionDetail();
+    }
+
+    // function renderAllocations(action) {
+    //
+    //     const table = document.querySelector("#allocationTable tbody");
+    //     table.innerHTML = "";
+    //
+    //     if (!action.allocations) return;
+    //
+    //     action.allocations.forEach(a => {
+    //
+    //         let time = a.timePeriod
+    //             ? `${a.timePeriod.start} → ${a.timePeriod.end}`
+    //             : "N/A";
+    //
+    //         let row = document.createElement("tr");
+    //
+    //         row.innerHTML = `
+    //         <td>${a.resourceType.name}</td>
+    //         <td>${a.quantity}</td>
+    //         <td>${a.kind}</td>
+    //         <td>${a.assetId || "-"}</td>
+    //         <td>${time}</td>
+    //     `;
+    //
+    //         table.appendChild(row);
+    //     });
+    // }
 
     showPage("dashboard");
 </script>
@@ -419,6 +689,7 @@
 
 <nav>
     <button onclick="showPage('dashboard')">Dashboard</button>
+    <button onclick="showPage('actions')">Actions</button>
     <button onclick="showPage('plans')">Plans</button>
     <button onclick="showPage('ledger')">Ledger</button>
     <button onclick="showPage('report')">Report</button>
@@ -433,6 +704,63 @@
         </thead>
         <tbody></tbody>
     </table>
+</div>
+
+
+<div id="actions" class="container hidden">
+
+    <h2>Action Detail</h2>
+
+    <select id="actionSelect" onchange="loadActionDetail()"></select>
+
+    <div id="actionDetail">
+
+        <h3 id="actionName"></h3>
+
+        <p><b>Current State:</b> <span id="actionState"></span></p>
+
+        <div id="actionTransitions"></div>
+
+        <hr>
+
+        <h3>Plan vs Reality</h3>
+        <div id="planReality"></div>
+
+        <hr>
+
+        <h3>Resource Allocations</h3>
+
+        <form onsubmit="addAllocation(event)">
+            <select id="allocResourceType"></select>
+
+            <input id="allocQty" type="number" step="any" placeholder="Quantity">
+
+            <select id="allocKind">
+                <option value="GENERAL">GENERAL</option>
+                <option value="SPECIFIC">SPECIFIC</option>
+            </select>
+
+            <input id="allocAssetId" placeholder="Asset ID (optional)">
+            <input id="allocStart" type="date">
+            <input id="allocEnd" type="date">
+
+            <button type="submit">Add Allocation</button>
+        </form>
+
+        <table id="allocationTable">
+            <thead>
+            <tr>
+                <th>Type</th>
+                <th>Qty</th>
+                <th>Kind</th>
+                <th>Asset</th>
+                <th>Time</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+    </div>
 </div>
 
 <div id="plans" class="container hidden">
@@ -452,38 +780,38 @@
 </div>
 
 
-<div id="actionDetail" class="container hidden">
-    <button onclick="showPage('planDetail')">Back</button>
+<!--<div id="actionDetail" class="container hidden">-->
+<!--    <button onclick="showPage('planDetail')">Back</button>-->
 
-    <h2>Action Detail</h2>
-    <div id="actionInfo"></div>
+<!--    <h2>Action Detail</h2>-->
+<!--    <div id="actionInfo"></div>-->
 
-    <h3>Transitions</h3>
-    <button onclick="actionTransition('implement')">Implement</button>
-    <button onclick="actionTransition('complete')">Complete</button>
-    <button onclick="actionTransition('suspend')">Suspend</button>
-    <button onclick="actionTransition('resume')">Resume</button>
-    <button onclick="actionTransition('abandon')">Abandon</button>
+<!--    <h3>Transitions</h3>-->
+<!--    <button onclick="actionTransition('implement')">Implement</button>-->
+<!--    <button onclick="actionTransition('complete')">Complete</button>-->
+<!--    <button onclick="actionTransition('suspend')">Suspend</button>-->
+<!--    <button onclick="actionTransition('resume')">Resume</button>-->
+<!--    <button onclick="actionTransition('abandon')">Abandon</button>-->
 
-    <h3>Allocations</h3>
-    <form onsubmit="addAllocation(event)">
-        <input id="resourceType" placeholder="Resource Type ID">
-        <input id="quantity" type="number" step="any">
-        <select id="allocKind">
-            <option value="GENERAL">GENERAL</option>
-            <option value="SPECIFIC">SPECIFIC</option>
-        </select>
-        <button>Add</button>
-    </form>
+<!--    <h3>Allocations</h3>-->
+<!--    <form onsubmit="addAllocation(event)">-->
+<!--        <input id="resourceType" placeholder="Resource Type ID">-->
+<!--        <input id="quantity" type="number" step="any">-->
+<!--        <select id="allocKind">-->
+<!--            <option value="GENERAL">GENERAL</option>-->
+<!--            <option value="SPECIFIC">SPECIFIC</option>-->
+<!--        </select>-->
+<!--        <button>Add</button>-->
+<!--    </form>-->
 
-    <table id="allocationTable">
-        <thead>
-        <tr><th>Resource</th><th>Qty</th><th>Kind</th></tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+<!--    <table id="allocationTable">-->
+<!--        <thead>-->
+<!--        <tr><th>Resource</th><th>Qty</th><th>Kind</th></tr>-->
+<!--        </thead>-->
+<!--        <tbody></tbody>-->
+<!--    </table>-->
 
-</div>
+<!--</div>-->
 
 
 <div id="ledger" class="container hidden">
@@ -557,11 +885,34 @@
     <table id="resourceTypeTable">
         <thead>
         <tr>
-            <th>ID</th><th>Name</th><th>Kind</th><th>Unit</th><th>Pool Account</th>
+            <th>ID</th><th>Name</th><th>Kind</th><th>Unit</th>
         </tr>
         </thead>
         <tbody></tbody>
     </table>
+
+    <hr>
+
+    <h3>Create Plan From Protocol</h3>
+    <form onsubmit="createPlanFromProtocol(event)">
+        <input id="planName" placeholder="Plan Name" required>
+        <input id="planStart" type="date">
+
+        <select id="protocolSelect"></select>
+
+        <button type="submit">Create Plan</button>
+    </form>
+
+    <hr>
+
+    <h3>Create Plan From Scratch</h3>
+
+    <input id="manualPlanName" placeholder="Plan Name">
+    <button onclick="addRootNode()">+ Add Root Node</button>
+
+    <div id="planBuilder"></div>
+
+    <button onclick="submitManualPlan()">Create Manual Plan</button>
 
 </div>
 

@@ -1,8 +1,10 @@
 package com.project4.Managers;
 
+import com.project4.Engines.ReportingEngine;
 import com.project4.Resources.*;
 import com.project4.Iterator.DepthFirstPlanIterator;
 import com.project4.Repositories.ResourceAccess;
+import com.project4.State.ProposedState;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -11,16 +13,18 @@ import java.util.*;
 public class PlanManager {
 
     private final ResourceAccess resourceAccess;
+    private final ReportingEngine reportingEngine;
+    private final ProposedState proposedState;
 
-    public PlanManager(ResourceAccess resourceAccess) {
+    public PlanManager(ResourceAccess resourceAccess, ReportingEngine reportingEngine, ProposedState proposedState) {
         this.resourceAccess = resourceAccess;
+        this.reportingEngine = reportingEngine;
+        this.proposedState = proposedState;
     }
 
 
     public void createPlan(Map<String, Object> planData) {
-
         Plan plan = new Plan();
-
         plan.setName((String) planData.get("name"));
 
         if (planData.get("targetStartDate") != null) {
@@ -29,97 +33,104 @@ public class PlanManager {
             );
         }
 
-
         if (planData.get("protocolId") != null) {
-
             Integer protocolId = Integer.parseInt(planData.get("protocolId").toString());
             Protocol protocol = resourceAccess.getProtocol(protocolId);
-
             plan.setSourceProtocol(protocol);
-
             List<PlanNode> children = generateFromProtocol(protocol, plan);
             plan.setChildren(children);
-        } else {
-            plan.setChildren(new ArrayList<>());
+
+        } else if (planData.get("children") != null) {
+            List<Map<String, Object>> childData =
+                    (List<Map<String, Object>>) planData.get("children");
+            List<PlanNode> nodes = buildPlanNodes(childData, plan);
+            plan.setChildren(nodes);
         }
 
         resourceAccess.savePlan(plan);
     }
 
+    private List<PlanNode> buildPlanNodes(List<Map<String, Object>> dataList, PlanNode parent) {
+        List<PlanNode> nodes = new ArrayList<>();
+
+        for (Map<String, Object> data : dataList) {
+            String type = (String) data.get("type");
+
+            if ("ACTION".equalsIgnoreCase(type)) {
+                ProposedAction action = new ProposedAction();
+                action.setName((String) data.get("name"));
+                action.setStatus(ActionStatus.PROPOSED);
+                action.setState(proposedState);
+                action.setParent(parent);
+                nodes.add(action);
+
+            } else if ("PLAN".equalsIgnoreCase(type)) {
+                Plan subPlan = new Plan();
+                subPlan.setName((String) data.get("name"));
+                subPlan.setParent(parent);
+
+                if (data.get("children") != null) {
+                    List<Map<String, Object>> childData =
+                            (List<Map<String, Object>>) data.get("children");
+                    subPlan.setChildren(buildPlanNodes(childData, subPlan));
+                }
+
+                nodes.add(subPlan);
+            }
+        }
+        return nodes;
+    }
 
     private List<PlanNode> generateFromProtocol(Protocol protocol, Plan parentPlan) {
-
         Map<ProtocolStep, ProposedAction> stepMap = new HashMap<>();
-        List<PlanNode> rootNodes = new ArrayList<>();
 
-        /* ===== PASS 1: Create all ProposedActions ===== */
         for (ProtocolStep step : protocol.getSteps()) {
-
             ProposedAction action = new ProposedAction();
             action.setName(step.getName());
             action.setProtocol(protocol);
             action.setStatus(ActionStatus.PROPOSED);
-
-            resourceAccess.saveProposedAction(action);
-
+            action.setState(proposedState);
+            action.setParent(parentPlan);
             stepMap.put(step, action);
         }
 
-        /* ===== PASS 2: Build dependency-respecting order using DFS ===== */
-
-        Map<String, ProtocolStep> stepByName = new HashMap<>();
-        for (ProtocolStep step : protocol.getSteps()) {
-            stepByName.put(step.getName(), step);
-        }
-
-        Set<String> visited = new HashSet<>();
-        Set<String> visiting = new HashSet<>();
-
+        Set<ProtocolStep> visited = new HashSet<>();
+        Set<ProtocolStep> visiting = new HashSet<>();
         List<PlanNode> orderedNodes = new ArrayList<>();
 
         for (ProtocolStep step : protocol.getSteps()) {
-            dfsBuild(step, stepByName, stepMap, visited, visiting, orderedNodes);
+            dfsBuild(step, stepMap, visited, visiting, orderedNodes);
         }
 
-        return rootNodes;
+        return orderedNodes;
     }
 
     private void dfsBuild(
             ProtocolStep step,
-            Map<String, ProtocolStep> stepByName,
             Map<ProtocolStep, ProposedAction> stepMap,
-            Set<String> visited,
-            Set<String> visiting,
+            Set<ProtocolStep> visited,
+            Set<ProtocolStep> visiting,
             List<PlanNode> result
     ) {
-        String name = step.getName();
+        if (visited.contains(step)) return;
 
-        if (visited.contains(name)) return;
-
-        if (visiting.contains(name)) {
-            throw new RuntimeException("Cycle detected in protocol steps at: " + name);
+        if (visiting.contains(step)) {
+            throw new RuntimeException("Cycle detected in protocol at step: " + step.getName());
         }
 
-        visiting.add(name);
+        visiting.add(step);
 
-        /* ===== Visit dependencies FIRST ===== */
         if (step.getDependsOn() != null) {
             for (ProtocolStep dep : step.getDependsOn()) {
-                String depName = dep.getName();
-
-                ProtocolStep depStep = stepByName.get(depName);
-
-                if (depStep == null) {
-                    throw new RuntimeException("Missing dependency: " + depName);
+                if (dep == null) {
+                    throw new RuntimeException("Null dependency in step: " + step.getName());
                 }
-
-                dfsBuild(depStep, stepByName, stepMap, visited, visiting, result);
+                dfsBuild(dep, stepMap, visited, visiting, result);
             }
         }
 
-        visiting.remove(name);
-        visited.add(name);
-
+        visiting.remove(step);
+        visited.add(step);
         result.add(stepMap.get(step));
     }
 
@@ -138,26 +149,6 @@ public class PlanManager {
 
         Plan plan = resourceAccess.getPlan(planId);
 
-        List<String> report = new ArrayList<>();
-
-        DepthFirstPlanIterator iterator = new DepthFirstPlanIterator(plan);
-
-        while (iterator.hasNext()) {
-
-            PlanNode node = iterator.next();
-
-            String type = (node instanceof Plan) ? "PLAN" : "ACTION";
-
-            String line = String.format(
-                    "%s | %s | Status: %s",
-                    type,
-                    node.getName(),
-                    node.getStatus()
-            );
-
-            report.add(line);
-        }
-
-        return report;
+        return reportingEngine.generateDepthFirstReport(plan);
     }
 }

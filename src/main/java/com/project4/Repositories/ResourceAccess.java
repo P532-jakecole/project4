@@ -6,6 +6,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Repository;
 
+import java.util.Date;
 import java.util.List;
 
 @Repository
@@ -38,6 +39,9 @@ public class ResourceAccess {
 
         Account account = createAccount(name, rt, AccountKind.POOL);
 
+        Account alertAccount = createAccount(name + "_ALERT", rt, AccountKind.ALERT_MEMO);
+        account.setAlertMemoAccount(alertAccount);
+
         rt.setPoolAccount(account);
 
         ResourceKind rk = null;
@@ -68,9 +72,38 @@ public class ResourceAccess {
     }
 
 
-    //Maybe
     public ImplementedAction getImplementedByProposed(Integer id) {
-        return em.find(ImplementedAction.class, id);
+        List<ImplementedAction> results = em.createQuery(
+                        "SELECT i FROM ImplementedAction i WHERE i.proposedAction.id = :id",
+                        ImplementedAction.class
+                )
+                .setParameter("id", id)
+                .getResultList();
+
+        return results.isEmpty() ? null : results.get(0);
+    }
+
+    public List<PostingRule> getRulesByTriggerAccount(Integer accountId) {
+        return em.createQuery(
+                        "SELECT r FROM PostingRule r WHERE r.triggerAccount.id = :id",
+                        PostingRule.class
+                ).setParameter("id", accountId)
+                .getResultList();
+    }
+
+    public void addBalance(Account account, Double amount){
+        System.out.println("Added Amount: " + amount);
+        Double balance = account.getAmount();
+        balance += amount;
+        account.setAmount(balance);
+        em.persist(account);
+    }
+
+    public void subBalance(Account account, Double amount){
+        Double balance = account.getAmount();
+        balance -= amount;
+        account.setAmount(balance);
+        em.persist(account);
     }
 
 
@@ -99,7 +132,7 @@ public class ResourceAccess {
 
 
     public void saveProposedAction(ProposedAction action) {
-        if (action.getId() == null) {
+       if (action.getId() == null) {
             em.persist(action);
         } else {
             em.merge(action);
@@ -108,6 +141,14 @@ public class ResourceAccess {
 
     public ProposedAction getProposedAction(Integer id) {
         return em.find(ProposedAction.class, id);
+    }
+
+    public List<ProposedAction> getProposedActionByProtocol(Integer id) {
+        return em.createQuery(
+                        "SELECT r FROM ProposedAction r WHERE r.protocol.id = :id",
+                        ProposedAction.class
+                ).setParameter("id", id)
+                .getResultList();
     }
 
 
@@ -137,6 +178,9 @@ public class ResourceAccess {
         ).setParameter("id", actionId).getResultList();
     }
 
+    public List<ProposedAction> getProposedActions(){
+        return em.createQuery("from ProposedAction", ProposedAction.class).getResultList();
+    }
 
 
     public void addAccount(Account account) {
@@ -154,10 +198,10 @@ public class ResourceAccess {
     public Account getUsageAccount(ProposedAction action) {
 
         List<Account> results = em.createQuery(
-                        "select a from Account a where a.action.id = :actionId and a.kind = :kind",
+                        "select a from Account a where a.name = :actionName and a.kind = :kind",
                         Account.class
                 )
-                .setParameter("actionId", action.getId())
+                .setParameter("actionName", action.getName())
                 .setParameter("kind", AccountKind.USAGE)
                 .getResultList();
 
@@ -241,6 +285,48 @@ public class ResourceAccess {
 
     public void saveEntry(Entry w) {
         em.persist(w);
+    }
+
+    public void createResourceAllocation(ProposedAction action, String kind, Date start, Date end, Double quantity, Integer resourceTypeId, Integer assetId){
+        ResourceAllocation allocation = new ResourceAllocation();
+        allocation.setAction(action);
+        allocation.setResourceType(getResourceType(resourceTypeId));
+        allocation.setAssetId(assetId);
+        allocation.setStartTime(start);
+        allocation.setQuantity(quantity);
+        //allocation.setEndTime(end);
+
+        AllocationKind ak = null;
+        switch (kind.toLowerCase()){
+            case "general":
+                ak = AllocationKind.GENERAL;
+                break;
+            case "specific":
+                ak = AllocationKind.SPECIFIC;
+                break;
+        }
+        allocation.setKind(ak);
+
+        em.persist(allocation);
+    }
+
+    public List<ResourceAllocation> getResourceAllocations(Integer actionId){
+        return em.createQuery(
+                "select e from ResourceAllocation e where e.action.id = :id",
+                ResourceAllocation.class
+        ).setParameter("id", actionId).getResultList();
+    }
+
+    public void createSuspension(ProposedAction action, String reason){
+        Suspension suspension = new Suspension();
+        suspension.setReason(reason);
+        suspension.setProposedAction(action);
+
+        em.persist(suspension);
+    }
+
+    public void saveAuditLogEntry(AuditLogEntry entry){
+        em.persist(entry);
     }
 
 

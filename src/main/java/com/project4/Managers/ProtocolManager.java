@@ -25,6 +25,7 @@ public class ProtocolManager {
     public void createProtocol(Map<String, Object> inputs) {
         String name = (String) inputs.get("name");
         String description = (String) inputs.get("description");
+
         List<Map<String, Object>> stepsRaw =
                 (List<Map<String, Object>>) inputs.get("steps");
 

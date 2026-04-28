@@ -20,13 +20,12 @@ public class Plan extends PlanNode {
 
     private Date targetStartDate;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "source_protocol_id")
     private Protocol sourceProtocol;
 
-    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<PlanNode> children = new ArrayList<>();
-
     public Protocol getSourceProtocol() {
         return sourceProtocol;
     }
@@ -37,7 +36,7 @@ public class Plan extends PlanNode {
 
     @Override
     public ActionStatus getStatus() {
-        boolean anyInProgress = false;
+        boolean anyInProgressOrCompleted = false;
         boolean anySuspended = false;
         boolean allCompleted = true;
         boolean allAbandoned = true;
@@ -45,15 +44,21 @@ public class Plan extends PlanNode {
         for (PlanNode child : children) {
             ActionStatus status = child.getStatus();
 
-            if (status == ActionStatus.IN_PROGRESS) anyInProgress = true;
+            if (status == ActionStatus.IN_PROGRESS || status == ActionStatus.COMPLETED) {
+                anyInProgressOrCompleted = true;
+            }
             if (status == ActionStatus.SUSPENDED) anySuspended = true;
             if (status != ActionStatus.COMPLETED) allCompleted = false;
             if (status != ActionStatus.ABANDONED) allAbandoned = false;
         }
 
         if (allCompleted) return ActionStatus.COMPLETED;
-        if (anyInProgress) return ActionStatus.IN_PROGRESS;
-        if (anySuspended) return ActionStatus.SUSPENDED;
+        if (anyInProgressOrCompleted) {
+            return ActionStatus.IN_PROGRESS;
+        }
+        if (anySuspended) {
+            return ActionStatus.SUSPENDED;
+        }
         if (allAbandoned) return ActionStatus.ABANDONED;
 
         return ActionStatus.PROPOSED;

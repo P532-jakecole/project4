@@ -1,5 +1,6 @@
 package com.project4;
 
+import com.project4.Engines.PostingRuleEngine;
 import com.project4.Repositories.ResourceAccess;
 import com.project4.Resources.ImplementedAction;
 import com.project4.Resources.ProposedAction;
@@ -12,10 +13,12 @@ import java.util.List;
 @Component
 public class ConsumableLedgerEntryGenerator extends AbstractLedgerEntryGenerator {
     private final ResourceAccess resourceAccess;
+    private final PostingRuleEngine postingRuleEngine;
 
-    public ConsumableLedgerEntryGenerator(ResourceAccess resourceAccess) {
-        super(resourceAccess);
+    public ConsumableLedgerEntryGenerator(ResourceAccess resourceAccess, PostingRuleEngine postingRuleEngine) {
+        super(resourceAccess, postingRuleEngine);
         this.resourceAccess = resourceAccess;
+        this.postingRuleEngine = postingRuleEngine;
     }
 
     @Override

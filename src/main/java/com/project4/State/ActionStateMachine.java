@@ -1,6 +1,5 @@
 package com.project4.State;
 
-import com.project4.ActionContext;
 import com.project4.Managers.ActionManager;
 import com.project4.Repositories.ResourceAccess;
 import com.project4.Resources.*;
@@ -88,7 +87,7 @@ public class ActionStateMachine {
 
 
     private ActionState getState(ProposedAction action) {
-        String stateName = action.getState().name();
+        String stateName = action.getStatus().name();
         ActionState state = states.get(stateName);
 
         if (state == null) {

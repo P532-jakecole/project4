@@ -1,5 +1,6 @@
 package com.project4;
 
+import com.project4.Engines.PostingRuleEngine;
 import com.project4.Repositories.ResourceAccess;
 import com.project4.Resources.*;
 
@@ -9,9 +10,11 @@ import java.util.List;
 public abstract class AbstractLedgerEntryGenerator {
 
     private final ResourceAccess resourceAccess;
+    private final PostingRuleEngine postingRuleEngine;
 
-    public AbstractLedgerEntryGenerator(ResourceAccess resourceAccess){
+    public AbstractLedgerEntryGenerator(ResourceAccess resourceAccess, PostingRuleEngine postingRuleEngine) {
         this.resourceAccess = resourceAccess;
+        this.postingRuleEngine = postingRuleEngine;
     }
 
     public final Transaction generateEntries(
@@ -20,6 +23,7 @@ public abstract class AbstractLedgerEntryGenerator {
         validate(allocs);
         Transaction tx = createTransaction(action);
         for (ResourceAllocation a : allocs) {
+            System.out.println("ResourceAllocation: " + a.getResourceType());
             Entry withdrawal = buildWithdrawal(tx, a);
             Entry deposit = buildDeposit(tx, a);
             postEntries(tx, withdrawal, deposit);
@@ -44,6 +48,7 @@ public abstract class AbstractLedgerEntryGenerator {
         Date now = new Date();
         e.setChargedAt(now);
         e.setBookedAt(now);
+        e.setProposedAction(a.getAction());
 
         // Optional linkage
         //e.setAction(a.getAction());
@@ -63,6 +68,7 @@ public abstract class AbstractLedgerEntryGenerator {
         Date now = new Date();
         e.setChargedAt(now);
         e.setBookedAt(now);
+        e.setProposedAction(a.getAction());
 
         // Optional linkage
         //e.setAction(a.getAction());
@@ -82,6 +88,8 @@ public abstract class AbstractLedgerEntryGenerator {
     }
     private void postEntries(Transaction tx,
                              Entry w, Entry d) {
+        System.out.println("Entry w: " + w.getAccount().getName());
+        System.out.println("Entry d: " + d.getAccount().getName());
         if (w == null || d == null) {
             throw new IllegalStateException("An Entry cannot be null");
         }
@@ -94,8 +102,28 @@ public abstract class AbstractLedgerEntryGenerator {
         resourceAccess.saveEntry(w);
         resourceAccess.saveEntry(d);
 
-        // Attach to transaction if needed
-        tx.getEntries().add(w);
-        tx.getEntries().add(d);
+
+
+//        tx.getEntries().add(w);
+//        tx.getEntries().add(d);
+
+        postingRuleEngine.applyRules(w);
+        postingRuleEngine.applyRules(d);
+        createAuditEntry("Withdraw", w.getAccount().getId(), w.getId());
+        createAuditEntry("Deposit", d.getAccount().getId(), d.getId());
+
     }
+
+    private void createAuditEntry(String event, Integer accountId, Integer entryId) {
+        AuditLogEntry auditLogEntry = new AuditLogEntry();
+        auditLogEntry.setAccountId(accountId);
+        auditLogEntry.setEntryId(entryId);
+        auditLogEntry.setEvent(event);
+        auditLogEntry.setTimestamp(new Date());
+
+        System.out.println("Created AuditEntry for: " + event);
+
+        resourceAccess.saveAuditLogEntry(auditLogEntry);
+    }
+
 }

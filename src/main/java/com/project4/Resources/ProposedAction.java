@@ -5,18 +5,27 @@ import com.project4.PlanNodeVisitor;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Entity
 public class ProposedAction extends PlanNode {
-
-    private String name;
 
     @ManyToOne
     private Protocol protocol;
 
     private String party;
     private String location;
+
+    public Date getTimeRef() {
+        return timeRef;
+    }
+
+    public void setTimeRef(Date timeRef) {
+        this.timeRef = timeRef;
+    }
+
+    private Date timeRef;
 
     @Enumerated(EnumType.STRING)
     private ActionStatus status;
@@ -61,14 +70,6 @@ public class ProposedAction extends PlanNode {
 
     public void setState(ActionState state) {
         this.state = state;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public String getParty() {

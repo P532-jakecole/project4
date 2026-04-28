@@ -22,6 +22,18 @@ public class Entry {
     private Date chargedAt;
     private Date bookedAt;
 
+    public ProposedAction getProposedAction() {
+        return proposedAction;
+    }
+
+    public void setProposedAction(ProposedAction proposedAction) {
+        this.proposedAction = proposedAction;
+    }
+
+    @ManyToOne
+    @JoinColumn(name = "action_id")
+    private ProposedAction proposedAction;
+
     public Integer getId() {
         return id;
     }

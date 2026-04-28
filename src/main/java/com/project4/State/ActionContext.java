@@ -1,10 +1,10 @@
-package com.project4;
+package com.project4.State;
 
 import com.project4.Managers.ActionManager;
 import com.project4.Repositories.ResourceAccess;
+import com.project4.Resources.ActionStatus;
 import com.project4.Resources.ImplementedAction;
 import com.project4.Resources.ProposedAction;
-import com.project4.State.ActionState;
 
 public class ActionContext {
 
@@ -65,6 +65,25 @@ public class ActionContext {
 
     public void setState(ActionState state) {
         action.setState(state);
+
+        switch(state.name().toLowerCase()){
+            case "proposed":
+                action.setStatus(ActionStatus.PROPOSED);
+                break;
+            case "suspended":
+                action.setStatus(ActionStatus.SUSPENDED);
+                break;
+            case "in_progress":
+                action.setStatus(ActionStatus.IN_PROGRESS);
+                break;
+            case "completed":
+                action.setStatus(ActionStatus.COMPLETED);
+                break;
+            case "abandoned":
+                action.setStatus(ActionStatus.ABANDONED);
+                break;
+        }
+
     }
 
     public ActionManager getActionManager() {

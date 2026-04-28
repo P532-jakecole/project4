@@ -1,5 +1,6 @@
 package com.project4;
 
+import com.fasterxml.jackson.databind.annotation.JsonAppend;
 import com.project4.Resources.*;
 import com.project4.Managers.*;
 import com.project4.State.IllegalStateTransitionException;
@@ -82,6 +83,15 @@ public class BusinessClient {
         return planManager.getPlans();
     }
 
+    @GetMapping("/actions/{id}")
+    public ProposedAction getAction(@PathVariable Integer id){
+        return actionManager.getAction(id);
+    }
+
+    @GetMapping("/actions")
+    public List<ProposedAction> getActions(){
+        return actionManager.getActions();
+    }
 
     @PostMapping("/actions/{id}/implement")
     public void implementAction(@PathVariable Integer id, @RequestBody Map<String, String> body) throws IllegalStateTransitionException {
@@ -112,8 +122,13 @@ public class BusinessClient {
     }
 
     @PostMapping("/actions/{id}/allocations")
-    public void attachAllocation(@PathVariable Integer id, @RequestBody ResourceAllocation allocation) {
+    public void attachAllocation(@PathVariable Integer id, @RequestBody Map<String, Object> allocation) {
         actionManager.attachResourceAllocation(id, allocation);
+    }
+
+    @GetMapping("/actions/{id}/allocations")
+    public List<ResourceAllocation> getAllocations(@PathVariable Integer id) {
+        return actionManager.getResourceAllocations(id);
     }
 
 

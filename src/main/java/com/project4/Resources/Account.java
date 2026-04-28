@@ -20,15 +20,26 @@ public class Account {
     @JsonManagedReference
     private ResourceType resourceType;
 
-    public double getAmount() {
+    public Double getAmount() {
         return amount;
     }
 
-    public void setAmount(double amount) {
+    public void setAmount(Double amount) {
         this.amount = amount;
     }
 
-    private double amount;
+    private Double amount;
+
+    public Account getAlertMemoAccount() {
+        return alertMemoAccount;
+    }
+
+    public void setAlertMemoAccount(Account alertMemoAccount) {
+        this.alertMemoAccount = alertMemoAccount;
+    }
+
+    @OneToOne
+    private Account alertMemoAccount;
 
 //    @ManyToOne
 //    private ProposedAction action;

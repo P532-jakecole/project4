@@ -2,6 +2,8 @@ package com.project4.Resources;
 
 import jakarta.persistence.*;
 
+import java.util.Date;
+
 @Entity
 public class ResourceAllocation {
 
@@ -24,10 +26,29 @@ public class ResourceAllocation {
     @Enumerated(EnumType.STRING)
     private AllocationKind kind;
 
-    private String assetId;
+    private Integer assetId;
 
-    //TODO change to actual time
-    private String timePeriod;
+    public Date getStart() {
+        return start;
+    }
+
+    public void setStartTime(Date start) {
+        this.start = start;
+    }
+
+    public Date getEnd() {
+        return end;
+    }
+
+    public void setEndTime(Date end) {
+        this.end = end;
+    }
+
+    @Column(name = "end_time")
+    private Date end;
+
+    @Column(name = "start_time")
+    private Date start;
 
     @ManyToOne
     public ProposedAction getAction() {
@@ -82,19 +103,13 @@ public class ResourceAllocation {
         this.kind = kind;
     }
 
-    public String getAssetId() {
+    public Integer getAssetId() {
         return assetId;
     }
 
-    public void setAssetId(String assetId) {
+    public void setAssetId(Integer assetId) {
         this.assetId = assetId;
     }
 
-    public String getTimePeriod() {
-        return timePeriod;
-    }
 
-    public void setTimePeriod(String timePeriod) {
-        this.timePeriod = timePeriod;
-    }
 }

@@ -1,6 +1,6 @@
 package com.project4.State;
 
-import com.project4.ActionContext;
+import com.project4.Repositories.ResourceAccess;
 import com.project4.Resources.ImplementedAction;
 import com.project4.Resources.ProposedAction;
 import org.springframework.stereotype.Component;
@@ -14,7 +14,7 @@ public class InProgressState implements ActionState {
     private final AbandonedState abandonedState;
     private final CompletedState completedState;
 
-    public InProgressState(SuspendedState suspendedState, AbandonedState abandonedState, CompletedState completedState) {
+    public InProgressState(SuspendedState suspendedState, AbandonedState abandonedState, CompletedState completedState, ResourceAccess resourceAccess) {
         this.suspendedState = suspendedState;
         this.abandonedState = abandonedState;
         this.completedState = completedState;
@@ -37,6 +37,7 @@ public class InProgressState implements ActionState {
 
     @Override
     public void suspend(ActionContext ctx, String reason) {
+        ctx.getResourceAccess().createSuspension(ctx.getAction(), reason);
         ctx.setState(suspendedState);
     }
 

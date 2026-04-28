@@ -1,10 +1,18 @@
 package com.project4.State;
 
-import com.project4.ActionContext;
 import org.springframework.stereotype.Component;
 
 @Component
 public class SuspendedState implements ActionState {
+
+    private final AbandonedState abandonedState;
+    private final ProposedState proposedState;
+
+    public SuspendedState(AbandonedState abandonedState, ProposedState proposedState) {
+        this.abandonedState = abandonedState;
+        this.proposedState = proposedState;
+    }
+
     @Override
     public void implement(ActionContext ctx) throws IllegalStateTransitionException {
         throw new IllegalStateTransitionException();
@@ -17,7 +25,7 @@ public class SuspendedState implements ActionState {
 
     @Override
     public void resume(ActionContext ctx) {
-
+        ctx.setState(proposedState);
     }
 
     @Override
@@ -27,7 +35,7 @@ public class SuspendedState implements ActionState {
 
     @Override
     public void abandon(ActionContext ctx) {
-
+        ctx.setState(abandonedState);
     }
 
     @Override

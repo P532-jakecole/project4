@@ -18,4 +18,48 @@ public class AuditLogEntry {
     private Integer actionId;
 
     private Date timestamp;
+
+    public Integer getId() {
+        return id;
+    }
+
+    public String getEvent() {
+        return event;
+    }
+
+    public void setEvent(String event) {
+        this.event = event;
+    }
+
+    public Integer getAccountId() {
+        return accountId;
+    }
+
+    public void setAccountId(Integer accountId) {
+        this.accountId = accountId;
+    }
+
+    public Integer getEntryId() {
+        return entryId;
+    }
+
+    public void setEntryId(Integer entryId) {
+        this.entryId = entryId;
+    }
+
+    public Integer getActionId() {
+        return actionId;
+    }
+
+    public void setActionId(Integer actionId) {
+        this.actionId = actionId;
+    }
+
+    public Date getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Date timestamp) {
+        this.timestamp = timestamp;
+    }
 }

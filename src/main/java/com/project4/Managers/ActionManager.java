@@ -1,16 +1,16 @@
 package com.project4.Managers;
 
-import com.project4.AbstractLedgerEntryGenerator;
-import com.project4.ActionContext;
 import com.project4.ConsumableLedgerEntryGenerator;
 import com.project4.Resources.*;
 import com.project4.Repositories.ResourceAccess;
 import com.project4.State.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.ExtractingResponseErrorHandler;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ActionManager {
@@ -90,14 +90,36 @@ public class ActionManager {
 //        resourceAccess.saveProposedAction(action);
     }
 
+    public ProposedAction getAction(Integer id){
+        return resourceAccess.getProposedAction(id);
+    }
+
+    public List<ProposedAction> getActions(){
+        return resourceAccess.getProposedActions();
+    }
+
+    public List<ResourceAllocation> getResourceAllocations(Integer id){
+        return resourceAccess.getResourceAllocations(id);
+    }
 
     public void generateLedgerEntries(ImplementedAction action) {
         ledgerGenerator.generateEntries(action);
     }
 
-    public void attachResourceAllocation(Integer actionId, ResourceAllocation allocation) {
+    public void attachResourceAllocation(Integer actionId, Map<String, Object> inputs) {
         ProposedAction action = resourceAccess.getProposedAction(actionId);
-        allocation.setAction(action);
-        resourceAccess.saveResourceAllocation(allocation);
+        String kind = inputs.get("kind").toString();
+        LocalDate startDate = LocalDate.parse(inputs.get("start").toString());
+        Date start = java.sql.Date.valueOf(startDate);
+        LocalDate endDate = LocalDate.parse(inputs.get("end").toString());
+        Date end = java.sql.Date.valueOf(endDate);
+        Double quantity = Double.parseDouble(inputs.get("quantity").toString());
+        Integer resourceTypeId = Integer.parseInt(inputs.get("resourceTypeId").toString());
+        Integer assetId = null;
+        if(inputs.get("assetId") != null){
+            assetId = Integer.parseInt(inputs.get("assetId").toString());
+        }
+
+        resourceAccess.createResourceAllocation(action, kind, start, end, quantity, resourceTypeId, assetId);
     }
 }

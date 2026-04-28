@@ -1,5 +1,6 @@
 package com.project4.Resources;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.project4.PlanNodeVisitor;
 import jakarta.persistence.*;
 
@@ -15,12 +16,13 @@ public abstract class PlanNode {
 
     @ManyToOne
     @JoinColumn(name = "parent_id")
-    protected Plan parent;
+    @JsonIgnore
+    protected PlanNode parent;
 
     public Integer getId() { return id; }
 
-    public Plan getParent() { return parent; }
-    public void setParent(Plan parent) { this.parent = parent; }
+    public PlanNode getParent() { return parent; }
+    public void setParent(PlanNode parent) { this.parent = parent; }
 
     public abstract ActionStatus getStatus();
 
