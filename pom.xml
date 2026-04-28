@@ -6,13 +6,13 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.5.11</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
-	<groupId>com.project3</groupId>
-	<artifactId>project3</artifactId>
+	<groupId>com.project4</groupId>
+	<artifactId>project4</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>project3</name>
-	<description>Project3</description>
+	<name>project4</name>
+	<description>Project4</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -39,6 +39,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
 		</dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

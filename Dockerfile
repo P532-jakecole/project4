@@ -6,6 +6,6 @@ RUN mvn -q package -DskipTests
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-COPY --from=build /app/target/*.jar project3.jar
+COPY --from=build /app/target/*.jar project4.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "project3.jar"]
+ENTRYPOINT ["java", "-jar", "project4.jar"]

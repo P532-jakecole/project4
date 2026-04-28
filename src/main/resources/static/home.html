@@ -70,852 +70,502 @@
     </style>
 </head>
 <body>
+
 <script>
     let host = "";
-    let staff = "staff";
-    let currentPatient = null;
+    let selectedPlan = null;
+    let selectedAction = null;
 
-    async function loadUserTable() {
-        const res = await fetch(host + "/api/users");
-        const users = await res.json();
 
-        const table = document.querySelector("#userTable tbody");
+    function showPage(id) {
+        document.querySelectorAll('.container').forEach(d => d.classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
+
+        if (id === "dashboard") loadDashboard();
+        if (id === "plans") loadPlans();
+        if (id === "ledger") loadAccounts();
+        if (id === "report") loadReport();
+        if (id === "catalogue") loadCatalogue();
+    }
+
+
+    async function loadDashboard() {
+        const res = await fetch(host + "/api/accounts");
+        const accounts = await res.json();
+
+        const table = document.querySelector("#accountTable tbody");
         table.innerHTML = "";
 
-        users.forEach(u => {
+        accounts.forEach(a => {
             const row = document.createElement("tr");
 
+            let alert = a.balance < 0 ? "BELOW ZERO" : "";
+
             row.innerHTML = `
-            <td>${u.username}</td>
-            <td>${u.role}</td>
+            <td>${a.name}</td>
+            <td>${a.kind}</td>
+            <td>${a.balance}</td>
+            <td>${alert}</td>
         `;
 
             table.appendChild(row);
         });
     }
 
-    function showPage(id) {
-        document.querySelectorAll('.container').forEach(d => d.classList.add('hidden'));
-        document.getElementById(id).classList.remove('hidden');
 
-        if(id === "users"){
-            loadUserTable();
-        }else if(id === "catalogue"){
-            loadCatalogue();
-        }else if(id === "logs"){
-            loadLogs();
+    async function loadPlans() {
+        const res = await fetch(host + "/api/plans");
+        const plans = await res.json();
+
+        const table = document.querySelector("#planTable tbody");
+        table.innerHTML = "";
+
+        plans.forEach(p => {
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
+            <td>${p.id}</td>
+            <td>${p.name}</td>
+            <td><button onclick="loadPlanDetail(${p.id})">View</button></td>
+        `;
+
+            table.appendChild(row);
+        });
+    }
+
+    async function loadPlanDetail(id) {
+        selectedPlan = id;
+        showPage("planDetail");
+
+        const res = await fetch(host + `/api/plans/${id}`);
+        const tree = await res.json();
+
+        const container = document.getElementById("planTree");
+        container.innerHTML = "";
+
+        renderNode(tree, container, 0);
+    }
+
+
+    function renderNode(node, container, level) {
+        let div = document.createElement("div");
+
+        div.style.marginLeft = (level * 20) + "px";
+
+        let type = node.children ? "PLAN" : "ACTION";
+
+        div.innerHTML = `
+        <b>${node.name}</b> (${type}) - ${node.status}
+        ${!node.children ? `<button onclick="selectAction(${node.id})">Open</button>` : ""}
+    `;
+
+        container.appendChild(div);
+
+        if (node.children) {
+            node.children.forEach(child => renderNode(child, container, level + 1));
         }
     }
 
-    async function loadPatients() {
-        const res = await fetch(host + '/api/patients');
-        const data = await res.json();
 
-        const tableBody = document.querySelector("#patientTable tbody");
-        //const patientList = document.querySelector("#patientList ul");
+    async function selectAction(id) {
+        selectedAction = id;
+        showPage("actionDetail");
 
-        tableBody.innerHTML = '';
-        data.forEach(p => {
+        const res = await fetch(host + `/api/actions/${id}`);
+        const action = await res.json();
+
+        document.getElementById("actionInfo").innerHTML = `
+        <b>${action.name}</b><br>
+        State: ${action.status}<br>
+        Party: ${action.party || "N/A"}<br>
+        Location: ${action.location || "N/A"}
+    `;
+
+        await loadAllocations(id);
+    }
+
+
+    async function actionTransition(type) {
+        let url = `/api/actions/${selectedAction}/${type}`;
+
+        let body = type === "suspend"
+            ? JSON.stringify(prompt("Reason:"))
+            : null;
+
+        await fetch(host + url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: body
+        });
+
+        await selectAction(selectedAction);
+    }
+
+
+    async function loadAllocations(actionId) {
+        const res = await fetch(host + `/api/actions/${actionId}`);
+        const action = await res.json();
+
+        const table = document.querySelector("#allocationTable tbody");
+        table.innerHTML = "";
+
+        if (!action.allocations) return;
+
+        action.allocations.forEach(a => {
             const row = document.createElement("tr");
+
             row.innerHTML = `
-                <td>${p.fullName}</td>
-                <td>${p.dateOfBirth}</td>
-                <td>${p.note}</td>
-                <td><button onclick="loadPatientDetail(${p.id})">See Patient Details</button></td>
-            `
-            // li.onclick = () => loadPatientDetail(p.id);
-            // patientList.appendChild(li);
-            tableBody.appendChild(row);
+            <td>${a.resourceType.name}</td>
+            <td>${a.quantity}</td>
+            <td>${a.kind}</td>
+        `;
+
+            table.appendChild(row);
         });
     }
 
-    async function loadPatientDetail(id) {
-        currentPatient = id;
-        showPage('patientDetail');
+    async function addAllocation(e) {
+        e.preventDefault();
 
-        const res = await fetch(host + `/api/patients/${id}/observations`);
-        const data = await res.json();
+        let body = [
+            document.getElementById("resourceType").value,
+            parseFloat(document.getElementById("quantity").value),
+            document.getElementById("allocKind").value
+        ];
 
-        const observationTable = document.querySelector("#observationTable tbody");
-        //const categoryTable = document.querySelector("#categoryTable tbody");
+        await fetch(host + `/api/actions/${selectedAction}/allocations`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
 
-        observationTable.innerHTML = '';
-        //categoryTable.innerHTML = '';
-        data.forEach(o => {
-            let recordingTime = o.recordingTime.split("T")[0];
-            let applicabilityTime = o.applicabilityTime.split("T")[0];
-            let style = o.source === "INFERRED" ? "font-style: italic;" : "";
-            let anomaly = o.flag ? "ANOMALY" : "";
-            let protocol = 'N/A';
-            if(o.protocol != null){
-                protocol = o.protocol.name;
-            }
-            if(o.type == "MEASUREMENT"){
-                const row = `
-                    <tr style="${style}">
-              <td>${o.type}</td>
-              <td>${o.phenomenonType.name}</td>
-              <td>${o.amount}</td>
-              <td>${o.unit}</td>
-              <td>${recordingTime}</td>
-              <td>${applicabilityTime}</td>
-              <td>${protocol}</td>
-              <td>${o.status}</td>
-              <td>${anomaly}</td>
-              <td><button onclick="rejectObservation(${o.id})">Reject</button></td>
-            </tr>
-                `
-                observationTable.innerHTML += row;
-            }else{
-                const row = `<tr style="${style}">
-                      <td>${o.type}</td>
-                      <td>${o.phenomenon.phenomenonType.name}</td>
-                      <td>${o.presence}</td>
-                      <td>${o.phenomenon.name}</td>
-                      <td>${recordingTime}</td>
-                      <td>${applicabilityTime}</td>
-                      <td>${protocol}</td>
-                      <td>${o.status}</td>
-                      <td>${anomaly}</td>
-                      <td><button onclick="rejectObservation(${o.id})">Reject</button></td>
-                    </tr>`;
-                observationTable.innerHTML += row;
-            }
+        await loadAllocations(selectedAction);
+    }
+
+
+    async function loadAccounts() {
+        const res = await fetch(host + "/api/accounts");
+        const accounts = await res.json();
+
+        const table = document.querySelector("#accounts tbody");
+        table.innerHTML = "";
+
+        accounts.forEach(a => {
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
+            <td>${a.name}</td>
+            <td>${a.balance}</td>
+            <td><button onclick="loadEntries(${a.id})">Entries</button></td>
+        `;
+
+            table.appendChild(row);
         });
     }
 
-    async function loadLogs() {
-        const cmd = await (await fetch(host + '/api/command-log')).json();
-        const audit = await (await fetch(host + '/api/audit-log')).json();
+    async function loadEntries(id) {
+        const res = await fetch(host + `/api/accounts/${id}/entries`);
+        const entries = await res.json();
 
-        const commandLog = document.querySelector("#commandLog tbody");
-        const auditLog = document.querySelector("#auditLog tbody");
+        const table = document.querySelector("#entries tbody");
+        table.innerHTML = "";
 
-        commandLog.innerHTML = ``;
-        auditLog.innerHTML = ``;
-        cmd.forEach(p => {
-            let executionTime = p.executedAt.split("T")[0];
-
+        entries.forEach(e => {
             const row = document.createElement("tr");
 
-            let undoBtn = p.undone
-                ? "Undone"
-                : `<button onclick="undoCommand(${p.id})">Undo</button>`;
-
-                    row.innerHTML = `
-                <td>${p.commandType}</td>
-                <td>${executionTime}</td>
-                <td>${undoBtn}</td>
-            `;
-
-            commandLog.appendChild(row);
-        });
-
-        audit.forEach(p => {
-            let timestamp = p.timestamp.split("T")[0];
-            const row = document.createElement("tr");
             row.innerHTML = `
-                <td>${p.event}</td>
-                <td>${p.observationId}</td>
-                <td>${p.patientId}</td>
-                <td>${timestamp}</td>
-            `
-            auditLog.appendChild(row);
-        });
+            <td>${e.amount}</td>
+            <td>${e.chargedAt}</td>
+            <td>${e.bookedAt}</td>
+        `;
 
-        // commandLog.innerHTML = cmd.map(c => `<li>${c.commandType}</li>`).join('');
-        // auditLog.innerHTML = audit.map(a => `<li>${a.event}</li>`).join('');
+            table.appendChild(row);
+        });
+    }
+
+
+    async function loadReport() {
+        if (!selectedPlan) return;
+
+        const res = await fetch(host + `/api/plans/${selectedPlan}/report`);
+        const report = await res.json();
+
+        const container = document.getElementById("reportOutput");
+        container.innerHTML = "";
+
+        report.forEach(r => {
+            let div = document.createElement("div");
+
+            div.innerHTML = `
+            ${r.name} - ${r.status}
+        `;
+
+            container.appendChild(div);
+        });
     }
 
     async function loadCatalogue() {
+        const protocols = await (await fetch(host + "/api/protocols")).json();
+        const resourceTypes = await (await fetch(host + "/api/resource-types")).json();
 
-        console.log("Called loadCatalogue")
-
-        const phenTypes = await (await fetch(host + '/api/phenomenon-types')).json();
-        console.log("Why")
-        const protocols = await (await fetch(host + '/api/protocols')).json();
-
-        console.log("Here")
-
-        const typesTable = document.querySelector("#phenomenonTypeTable tbody");
-        const protocolTable = document.querySelector("#protocolTable tbody");
-
-        typesTable.innerHTML = ``;
-        protocolTable.innerHTML = ``;
-        phenTypes.forEach(p => {
-            let list = "";
-            if (p.kind === "QUANTITATIVE") {
-                list = p.allowedUnits ? p.allowedUnits.join(", ") : "";
-            } else {
-                list = p.phenomena ? p.phenomena.map(ph => ph.name).join(", ") : "";
-            }
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${p.id}</td>
-                <td>${p.kind}</td>
-                <td>${p.name}</td>
-                <td>${list}</td>
-            `
-            typesTable.appendChild(row);
-        });
-
-        console.log("Here2")
+        const pTable = document.querySelector("#protocolTable tbody");
+        pTable.innerHTML = "";
 
         protocols.forEach(p => {
+            let steps = "";
+
+            if (p.steps) {
+                steps = p.steps.map(s =>
+                    `${s.name} (depends: ${(s.dependsOn.length > 0) ? s.dependsOn.map(d => d.name).join(", ") : "none"})`
+                ).join("<br>");
+            }
+
             const row = document.createElement("tr");
             row.innerHTML = `
-                <td>${p.id}</td>
-                <td>${p.name}</td>
-                <td>${p.description}</td>
-                <td>${p.accuracyRating}</td>
-            `
-            protocolTable.appendChild(row);
+            <td>${p.id}</td>
+            <td>${p.name}</td>
+            <td>${p.description}</td>
+            <td>${steps}</td>
+        `;
+            pTable.appendChild(row);
         });
 
-        // commandLog.innerHTML = cmd.map(c => `<li>${c.commandType}</li>`).join('');
-        // auditLog.innerHTML = audit.map(a => `<li>${a.event}</li>`).join('');
-    }
+        const rtTable = document.querySelector("#resourceTypeTable tbody");
+        rtTable.innerHTML = "";
 
-    async function loadUsers() {
-        const res = await fetch(host + "/api/users");
-        const users = await res.json();
+        resourceTypes.forEach(r => {
+            const row = document.createElement("tr");
 
-        const select = document.getElementById("userSelect");
-        select.innerHTML = `<option value="">Select User</option>`;
+            row.innerHTML = `
+            <td>${r.id}</td>
+            <td>${r.name}</td>
+            <td>${r.kind}</td>
+            <td>${r.unit}</td>
+            <td>${r.poolAccount?.name || r.poolAccount}</td>
+        `;
 
-        users.forEach(u => {
-            const option = document.createElement("option");
-            option.value = u.username;
-            option.innerText = `${u.username} (${u.role})`;
-            select.appendChild(option);
-        });
-    }
-
-    function setUser() {
-        staff = document.getElementById("userSelect").value;
-    }
-
-    loadPatients();
-    loadUsers();
-    loadUserTable();
-    loadLogs();
-    loadCatalogue();
-    // setInterval(loadLogs, 8000);
-    // setInterval(loadCatalogue, 10000);
-</script>
-
-<h1>Medical Tracker</h1>
-
-<select id="userSelect" onchange="setUser()">
-    <option value="">Select User</option>
-</select>
-
-<nav>
-    <button onclick="showPage('users')">Users</button>
-    <button onclick="showPage('patients')">Patients</button>
-    <button onclick="showPage('catalogue')">Catalogue</button>
-    <button onclick="showPage('logs')">Logs</button>
-</nav>
-<div id="users" class="container hidden">
-    <h2>User Management</h2>
-
-    <h3>Add User</h3>
-    <form onsubmit="createUser(event)">
-        <input id="username" placeholder="Username" required>
-
-        <select id="role">
-            <option value="CLINICIAN">CLINICIAN</option>
-            <option value="ADMIN">ADMIN</option>
-        </select>
-
-        <button type="submit">Add User</button>
-    </form>
-
-    <h3>Existing Users</h3>
-    <table id="userTable">
-        <thead>
-        <tr>
-            <th>Username</th>
-            <th>Role</th>
-        </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-</div>
-<div id="patients" class="container">
-    <h2>Patients</h2>
-
-    <form onsubmit="createPatient(event)">
-        <input id="fullName" placeholder="Full Name" required>
-        <input id="dob" type="date" required>
-        <input id="note" placeholder="Note">
-        <button type="submit">Add Patient</button>
-    </form>
-
-    <h2>Patient List</h2>
-    <table id="patientTable">
-        <thead>
-        <tr>
-            <th>Full Name</th>
-            <th>Date Of Birth</th>
-            <th>Note</th>
-        </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-</div>
-
-<div id="patientDetail" class="container hidden">
-    <h2>Patient Detail</h2>
-    <button onclick="showPage('patients')">Back</button>
-
-    <h3 style="align-self: center;">Observation Table</h3>
-    <table id="observationTable">
-        <thead>
-        <tr>
-            <th>Type</th><th>Phenomenon Type</th><th>Value</th><th>Unit/Phenomenon</th><th>Recording Time</th><th>Applicable Time</th><th>Protocol</th><th>Status</th><th>Flag</th>
-        </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-
-    <h3>Measurement</h3>
-    <form onsubmit="recordMeasurement(event)">
-        <input id="mType" placeholder="Phenomenon Type ID" required>
-        <input id="amount" type="number" step="any" placeholder="Amount" required>
-        <input id="unit" placeholder="Unit" required>
-        <input id="applicabilityTimestamp" type="date" placeholder="Applicable Timestamp">
-        <input id="attachedProtocol" placeholder="(optional) Used Protocol ID">
-        <button type="submit">Record</button>
-    </form>
-
-    <h3>Category Observation</h3>
-    <form onsubmit="recordCategory(event)">
-        <input id="phenomenon" placeholder="Phenomenon ID" required>
-        <select id="presence">
-            <option value="PRESENT">PRESENT</option>
-            <option value="ABSENT">ABSENT</option>
-        </select>
-        <input id="categoryApplicability" type="date" placeholder="Applicable Timestamp">
-        <input id="attachedProtocol2" placeholder="(optional) Used Protocol ID">
-        <button type="submit">Record</button>
-    </form>
-
-    <button onclick="evaluateRules()">Evaluate Rules</button>
-
-    <div id="inferenceModal" class="modal">
-        <div class="modal-content">
-            <h3>Inferred Observations</h3>
-            <div id="inferenceBody"></div>
-            <button onclick="closeModal()">Close</button>
-        </div>
-    </div>
-</div>
-
-<div id="catalogue" class="container hidden">
-    <h2>Catalogue</h2>
-
-    <h2> Create PhenomenonType </h2>
-    <form onsubmit="createPhenomenonType(event)">
-        <input id="ptypeName" placeholder="Name">
-        <select id="ptypeKind" onchange="togglePhenomenonInputs()">
-            <option value="QUANTITATIVE">QUANTITATIVE</option>
-            <option value="QUALITATIVE">QUALITATIVE</option>
-        </select>
-
-        <div id="quantSection">
-            <div id="quantitativeBounds">
-                <label>Lower Bound:</label>
-                <input type="number" step="any" id="lowerBound">
-
-                <label>Upper Bound:</label>
-                <input type="number" step="any" id="upperBound">
-            </div>
-            <h4>Allowed Units</h4>
-            <div id="unitList"></div>
-            <button type="button" onclick="addUnit()">+ Add Unit</button>
-        </div>
-
-        <div id="qualSection" style="display:none;">
-            <h4>Phenomena</h4>
-            <div id="phenomenonList"></div>
-            <button type="button" onclick="addPhenomenon()">+ Add Phenomenon</button>
-        </div>
-        <button type="submit">Add</button>
-    </form>
-
-    <h2> Create Protocol </h2>
-    <form onsubmit="createProtocol(event)">
-        <input id="protocolName" placeholder="Name">
-        <input id="protocolDesc" placeholder="Description">
-        <select id="accuracy">
-            <option>HIGH</option>
-            <option>MEDIUM</option>
-            <option>LOW</option>
-        </select>
-        <button type="submit">Add</button>
-    </form>
-
-    <h2>Create Associative Function</h2>
-    <form onsubmit="createFunction(event)">
-        <input id="ruleName" placeholder="Rule Name">
-        <input id="productConcept" placeholder="Product Concept">
-
-        <select id="strategyType">
-            <option value="CONJUNCTIVE">CONJUNCTIVE</option>
-            <option value="WEIGHTED">WEIGHTED</option>
-        </select>
-
-        <input id="threshold" type="number" step="any" placeholder="Threshold (for weighted)">
-
-        <div id="ruleArgs"></div>
-        <button type="button" onclick="addRuleArg()">+ Add Argument</button>
-
-        <button type="submit">Create Rule</button>
-    </form>
-
-    <h3 style="align-self: center;">Phenomenon Types</h3>
-    <table id="phenomenonTypeTable">
-        <thead>
-        <tr>
-            <th>ID</th><th>Kind</th><th>Name</th><th>Allowed Values</th>
-        </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-
-    <br>
-    <h3 style="align-self: center;">Protocols</h3>
-    <table id="protocolTable">
-        <thead>
-        <tr>
-            <th>ID</th><th>Name</th><th>Description</th><th>Accuracy Rating</th>
-        </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-</div>
-
-<div id="logs" class="container hidden">
-    <h2>Logs</h2>
-    <div class="flex">
-        <table id="commandLog">
-            <thead>
-            <tr>
-                <th>Command Type</th><th>Execution Time</th><th>Undo</th>
-            </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-        <table id="auditLog">
-            <thead>
-            <tr>
-                <th>Event</th><th>Observation Id</th><th>Patient Id</th><th>Timestamp</th>
-            </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-
-    async function createUser(e) {
-        e.preventDefault();
-
-        let username = document.getElementById("username").value;
-        let role = document.getElementById("role").value;
-
-        let body = [
-            username,
-            role
-        ];
-
-        await fetch(host + "/api/users/add", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        });
-
-        await loadUsers();
-        await loadUserTable();
-    }
-
-    async function undoCommand(id) {
-
-        await fetch(host + `/api/command-log/${id}/undo`, {
-            method: "POST",
-            body: JSON.stringify(staff)
-        });
-
-        await loadLogs();
-        if(currentPatient){
-            await loadPatientDetail(currentPatient);
-        }
-    }
-
-    async function createFunction(e) {
-        e.preventDefault();
-
-        let currentRule = document.querySelector("#ruleArgs");
-        let conceptInputs = currentRule.querySelectorAll("input:first-child");
-        let weightInputs = currentRule.querySelectorAll("input:last-child");
-
-        let concepts = [];
-        let weights = [];
-
-        for (let i = 0; i < conceptInputs.length; i++) {
-            let concept = conceptInputs[i].value.trim();
-            let weight = parseFloat(weightInputs[i].value);
-
-            if (concept !== "") {
-                concepts.push(concept);
-                weights.push(isNaN(weight) ? 0 : weight);
-            }
-        }
-
-        console.log(concepts);
-
-        let body = [
-            concepts,
-            weights,
-            document.getElementById("ruleName").value,
-            document.getElementById("productConcept").value,
-            document.getElementById("strategyType").value,
-            document.getElementById("threshold").value
-        ];
-
-        await fetch(host + "/api/rules", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
+            rtTable.appendChild(row);
         });
     }
 
-    function addRuleArg() {
-        let container = document.getElementById("ruleArgs");
+    function addStep() {
+        const container = document.getElementById("stepList");
 
-        let div = document.createElement("div");
+        const div = document.createElement("div");
 
         div.innerHTML = `
-        <input placeholder="Concept">
-        <input type="number" step="any" placeholder="Weight">
+        <input placeholder="Step Name">
+        <input placeholder="Sub-protocol ID">
+        <input placeholder="Depends On (step names)">
     `;
 
         container.appendChild(div);
     }
 
-    function addUnit() {
-        let container = document.getElementById("unitList");
-
-        let input = document.createElement("input");
-        input.placeholder = "Unit";
-
-        container.appendChild(input);
-    }
-
-    function addPhenomenon() {
-        let container = document.getElementById("phenomenonList");
-
-        let wrapper = document.createElement("div");
-
-        let input = document.createElement("input");
-        input.placeholder = "Phenomenon";
-
-        let parent = document.createElement("select");
-        parent.className = "parentSelect";
-
-        wrapper.appendChild(input);
-        wrapper.appendChild(parent);
-
-        container.appendChild(wrapper);
-
-        loadParentOptions(parent);
-    }
-
-    async function loadParentOptions(select) {
-        const res = await fetch(host + "/api/phenomenon");
-        const data = await res.json();
-
-        select.innerHTML = `<option value="">No Parent</option>`;
-
-        data.forEach(p => {
-            let opt = document.createElement("option");
-            opt.value = p.id;
-            opt.innerText = p.name;
-            select.appendChild(opt);
-        });
-    }
-
-    async function loadPhenomenonOptions(select) {
-        const res = await fetch(host + "/api/phenomenon");
-        const data = await res.json();
-
-        select.innerHTML = ``;
-
-        data.forEach(p => {
-            let opt = document.createElement("option");
-            opt.value = p.id;
-            opt.innerText = p.name;
-            select.appendChild(opt);
-        });
-    }
-
-    function togglePhenomenonInputs() {
-        let kind = document.getElementById("ptypeKind").value;
-
-        document.getElementById("quantSection").style.display =
-            kind === "QUANTITATIVE" ? "block" : "none";
-
-        document.getElementById("qualSection").style.display =
-            kind === "QUALITATIVE" ? "block" : "none";
-    }
-
-    async function createPatient(e) {
-        e.preventDefault();
-        let fullName = document.getElementById("fullName");
-        let dob = document.getElementById("dob");
-        let note = document.getElementById("note");
-
-        let body = [ fullName.value, dob.value, note.value, staff ];
-
-        let request = {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        };
-
-        await fetch(host + "/api/patients", request);
-        await loadPatients();
-        await loadLogs();
-    }
-
-    async function recordMeasurement(e) {
-        e.preventDefault();
-        let mType = document.getElementById("mType");
-        let amount = document.getElementById("amount");
-        let unit = document.getElementById("unit");
-        let applicability = document.getElementById("applicabilityTimestamp")
-        if(!applicability.value){
-            applicability.value = new Date().toISOString().split("T")[0];
-        }
-        let protocolId = document.getElementById("attachedProtocol");
-        if(!protocolId.value){
-            protocolId.value = null;
-        }
-
-        let body = [
-            currentPatient,
-            mType.value,
-            amount.value,
-            unit.value,
-            protocolId.value,
-            staff,
-            applicability.value
-        ];
-
-        let request = {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        };
-
-        await fetch(host + "/api/observations/measurement", request);
-        await loadPatientDetail(currentPatient);
-        await loadLogs();
-    }
-
-
-    async function recordCategory(e) {
-        e.preventDefault();
-
-        let phenomenon = document.getElementById("phenomenon");
-        let presence = document.getElementById("presence");
-        let applicability = document.getElementById("categoryApplicability")
-        if(!applicability.value){
-            applicability.value = new Date().toISOString().split("T")[0];
-        }
-        let protocolId = document.getElementById("attachedProtocol2");
-        if(!protocolId.value){
-            protocolId.value = null;
-        }
-
-        let body = [
-            currentPatient,
-            phenomenon.value,
-            presence.value,
-            protocolId.value,
-            applicability.value,
-            staff
-        ];
-
-        let request = {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        };
-
-        await fetch(host + "/api/observations/category", request);
-        await loadPatientDetail(currentPatient);
-        await loadLogs();
-    }
-
-    async function rejectObservation(id) {
-        let reason = "";
-
-        // keep prompting until user provides non-empty input
-        while (!reason || reason.trim() === "") {
-            reason = prompt("Enter reason for rejection:");
-
-            // if user cancels, stop entirely
-            if (reason === null) {
-                return;
-            }
-        }
-
-        let data = [
-            reason,
-            staff
-        ]
-        await fetch(host + `/api/observations/${id}/reject`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(data)
-        });
-        await loadPatientDetail(currentPatient);
-        await loadLogs();
-    }
-
-    // async function evaluateRules() {
-    //     let body = [staff];
-    //     const res = await fetch(host + `/api/patients/${currentPatient}/evaluate`, {
-    //         method: 'POST',headers: {
-    //             "Content-Type": "application/json"
-    //         },
-    //         body: JSON.stringify(body)
-    //     });
-    //     const data = await res.json();
-    //
-    //     let inferenceList = document.getElementById("inferenceList");
-    //
-    //     inferenceList.innerHTML = data.map(d => `<li>${d}</li>`).join('');
-    // }
-
-    async function evaluateRules() {
-        let s = [staff];
-        console.log(staff);
-
-        let response = await fetch(host + `/api/patients/${currentPatient}/evaluate`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(s)
-        });
-        await loadLogs();
-
-        let data = await response.json();
-
-        const body = document.getElementById("inferenceBody");
-        body.innerHTML = "";
-
-        data.forEach(item => {
-            const div = document.createElement("div");
-            div.className = "inference-item";
-
-            let evidenceArray = item[2];
-
-            console.log(evidenceArray);
-
-
-            div.innerHTML = `
-                <b>${item[0]}</b><br>
-                Strategy: ${item[1]}<br>
-                Evidence: ${Array.isArray(evidenceArray) ? evidenceArray.join(", ") : "None"}
-            `;
-
-            body.appendChild(div);
-        });
-
-        document.getElementById("inferenceModal").style.display = "block";
-    }
-
-    function closeModal() {
-        document.getElementById("inferenceModal").style.display = "none";
-    }
-
-    async function createPhenomenonType(e) {
-        e.preventDefault();
-
-        let ptypeName = document.getElementById("ptypeName");
-        let ptypeKind = document.getElementById("ptypeKind");
-        let list;
-        let body;
-
-        if(ptypeKind.value === "QUALITATIVE"){
-            list = Array.from(document.querySelectorAll("#phenomenonList div"))
-                .map(div => {
-                    return {
-                        name: div.querySelector("input").value,
-                        parentId: div.querySelector("select").value || null
-                    };
-                });
-            body = [
-                ptypeName.value,
-                ptypeKind.value,
-                list
-            ];
-        }else{
-            list = Array.from(document.querySelectorAll("#unitList input"))
-                .map(i => i.value)
-                .filter(v => v.trim() !== "");
-            body = [
-                ptypeName.value,
-                ptypeKind.value,
-                list,
-                parseFloat(document.getElementById("lowerBound").value),
-                parseFloat(document.getElementById("upperBound").value)
-            ];
-        }
-
-
-
-        let request = {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        };
-
-        await fetch(host + "/api/phenomenon-types", request);
-        await loadCatalogue();
-    }
-
     async function createProtocol(e) {
         e.preventDefault();
 
-        let protocolName = document.getElementById("protocolName");
-        let protocolDesc = document.getElementById("protocolDesc");
-        let accuracy = document.getElementById("accuracy");
+        const steps = Array.from(document.querySelectorAll("#stepList div"))
+            .map(div => {
+                const inputs = div.querySelectorAll("input");
 
-        let body = [
-            protocolName.value,
-            protocolDesc.value,
-            accuracy.value
-        ];
+                return {
+                    name: inputs[0].value,
+                    subProtocol: inputs[1].value || null,
+                    dependsOn: inputs[2].value
+                        ? inputs[2].value.split(",").map(s => s.trim())
+                        : []
+                };
+            });
 
-        let request = {
+        const body = {
+            name: document.getElementById("protocolName").value,
+            description: document.getElementById("protocolDesc").value,
+            steps: steps
+        };
+
+        await fetch(host + "/api/protocols", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body)
-        };
+        });
 
-        await fetch(host + "/api/protocols", request);
         await loadCatalogue();
     }
 
+    async function createResourceType(e) {
+        e.preventDefault();
+
+        const body = {
+            name: document.getElementById("rtName").value,
+            kind: document.getElementById("rtKind").value,
+            unit: document.getElementById("rtUnit").value
+        };
+
+        await fetch(host + "/api/resource-types", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+
+        await loadCatalogue();
+    }
+
+
+    showPage("dashboard");
 </script>
 
+<h1>Resource Planning System</h1>
+
+<nav>
+    <button onclick="showPage('dashboard')">Dashboard</button>
+    <button onclick="showPage('plans')">Plans</button>
+    <button onclick="showPage('ledger')">Ledger</button>
+    <button onclick="showPage('report')">Report</button>
+    <button onclick="showPage('catalogue')">Catalogue</button>
+</nav>
+
+<div id="dashboard" class="container">
+    <h2>Pool Accounts</h2>
+    <table id="accountTable">
+        <thead>
+        <tr><th>Name</th><th>Kind</th><th>Balance</th><th>Alert</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<div id="plans" class="container hidden">
+    <h2>Plans</h2>
+    <table id="planTable">
+        <thead>
+        <tr><th>ID</th><th>Name</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<div id="planDetail" class="container hidden">
+    <button onclick="showPage('plans')">Back</button>
+    <h2>Plan Tree</h2>
+    <div id="planTree"></div>
+</div>
+
+
+<div id="actionDetail" class="container hidden">
+    <button onclick="showPage('planDetail')">Back</button>
+
+    <h2>Action Detail</h2>
+    <div id="actionInfo"></div>
+
+    <h3>Transitions</h3>
+    <button onclick="actionTransition('implement')">Implement</button>
+    <button onclick="actionTransition('complete')">Complete</button>
+    <button onclick="actionTransition('suspend')">Suspend</button>
+    <button onclick="actionTransition('resume')">Resume</button>
+    <button onclick="actionTransition('abandon')">Abandon</button>
+
+    <h3>Allocations</h3>
+    <form onsubmit="addAllocation(event)">
+        <input id="resourceType" placeholder="Resource Type ID">
+        <input id="quantity" type="number" step="any">
+        <select id="allocKind">
+            <option value="GENERAL">GENERAL</option>
+            <option value="SPECIFIC">SPECIFIC</option>
+        </select>
+        <button>Add</button>
+    </form>
+
+    <table id="allocationTable">
+        <thead>
+        <tr><th>Resource</th><th>Qty</th><th>Kind</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+</div>
+
+
+<div id="ledger" class="container hidden">
+    <h2>Accounts</h2>
+    <table id="accounts">
+        <thead>
+        <tr><th>Name</th><th>Balance</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h3>Entries</h3>
+    <table id="entries">
+        <thead>
+        <tr><th>Amount</th><th>Charged</th><th>Booked</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+</div>
+
+
+<div id="report" class="container hidden">
+    <h2>Plan Report</h2>
+    <div id="reportOutput"></div>
+</div>
+
+<div id="catalogue" class="container hidden">
+
+    <h2>Catalogue</h2>
+
+    <h3>Create Protocol</h3>
+    <form onsubmit="createProtocol(event)">
+        <input id="protocolName" placeholder="Name" required>
+        <input id="protocolDesc" placeholder="Description">
+
+        <h4>Steps</h4>
+        <div id="stepList"></div>
+        <button type="button" onclick="addStep()">+ Add Step</button>
+
+        <button type="submit">Create Protocol</button>
+    </form>
+
+    <h3>Protocols</h3>
+    <table id="protocolTable">
+        <thead>
+        <tr>
+            <th>ID</th><th>Name</th><th>Description</th><th>Steps</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <hr>
+
+    <h3>Create Resource Type</h3>
+    <form onsubmit="createResourceType(event)">
+        <input id="rtName" placeholder="Name" required>
+
+        <select id="rtKind">
+            <option value="ASSET">ASSET</option>
+            <option value="CONSUMABLE">CONSUMABLE</option>
+        </select>
+
+        <input id="rtUnit" placeholder="Unit (e.g. hours, kg)">
+
+        <button type="submit">Create Resource Type</button>
+    </form>
+
+    <h3>Resource Types</h3>
+    <table id="resourceTypeTable">
+        <thead>
+        <tr>
+            <th>ID</th><th>Name</th><th>Kind</th><th>Unit</th><th>Pool Account</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+</div>
+
+
 </body>
+
 </html>

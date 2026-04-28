@@ -1,0 +1,255 @@
+package com.project4.Repositories;
+
+import com.project4.Resources.*;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+@Transactional
+public class ResourceAccess {
+
+    @PersistenceContext
+    private EntityManager em;
+
+    public void addProtocol(Protocol protocol) {
+        em.persist(protocol);
+    }
+
+    public Protocol getProtocol(Integer id) {
+        return em.find(Protocol.class, id);
+    }
+
+    public List<Protocol> getAllProtocols() {
+        return em.createQuery("from Protocol", Protocol.class).getResultList();
+    }
+
+    public List<Plan> getPlans(){
+        return em.createQuery("from Plan", Plan.class).getResultList();
+    }
+
+    public void createResourceType(String name, String kind, String unit){
+        ResourceType rt = new ResourceType();
+        rt.setName(name);
+        rt.setUnit(unit);
+
+        Account account = createAccount(name, rt, AccountKind.POOL);
+
+        rt.setPoolAccount(account);
+
+        ResourceKind rk = null;
+
+        switch(kind.toLowerCase()){
+            case "asset":
+                rk = ResourceKind.ASSET;
+                break;
+            case "consumable":
+                rk = ResourceKind.CONSUMABLE;
+                break;
+        }
+        rt.setKind(rk);
+
+        em.persist(rt);
+    }
+
+    public void addResourceType(ResourceType type) {
+        em.persist(type);
+    }
+
+    public ResourceType getResourceType(Integer id) {
+        return em.find(ResourceType.class, id);
+    }
+
+    public List<ResourceType> getAllResourceTypes() {
+        return em.createQuery("from ResourceType", ResourceType.class).getResultList();
+    }
+
+
+    //Maybe
+    public ImplementedAction getImplementedByProposed(Integer id) {
+        return em.find(ImplementedAction.class, id);
+    }
+
+
+    public void addPlan(Plan plan) {
+        em.persist(plan);
+    }
+
+    public Plan getPlan(Integer id) {
+        return em.find(Plan.class, id);
+    }
+
+    public void savePlan(Plan plan) {
+        em.merge(plan);
+    }
+
+    public Account createAccount(String name, ResourceType resourceType, AccountKind accountKind){
+        Account account = new Account();
+        account.setName(name);
+        account.setKind(accountKind);
+        account.setResourceType(resourceType);
+        account.setAmount(100.0);
+        em.persist(account);
+        return account;
+    }
+
+
+
+    public void saveProposedAction(ProposedAction action) {
+        if (action.getId() == null) {
+            em.persist(action);
+        } else {
+            em.merge(action);
+        }
+    }
+
+    public ProposedAction getProposedAction(Integer id) {
+        return em.find(ProposedAction.class, id);
+    }
+
+
+
+    public void saveImplementedAction(ImplementedAction action) {
+        if (action.getId() == null) {
+            em.persist(action);
+        } else {
+            em.merge(action);
+        }
+    }
+
+    public ImplementedAction getImplementedAction(Integer id) {
+        return em.find(ImplementedAction.class, id);
+    }
+
+
+
+    public void addResourceAllocation(ResourceAllocation allocation) {
+        em.persist(allocation);
+    }
+
+    public List<ResourceAllocation> getAllocationsByAction(Integer actionId) {
+        return em.createQuery(
+                "select a from ResourceAllocation a where a.action.id = :id",
+                ResourceAllocation.class
+        ).setParameter("id", actionId).getResultList();
+    }
+
+
+
+    public void addAccount(Account account) {
+        em.persist(account);
+    }
+
+    public Account getAccount(Integer id) {
+        return em.find(Account.class, id);
+    }
+
+    public List<Account> getAllAccounts() {
+        return em.createQuery("from Account", Account.class).getResultList();
+    }
+
+    public Account getUsageAccount(ProposedAction action) {
+
+        List<Account> results = em.createQuery(
+                        "select a from Account a where a.action.id = :actionId and a.kind = :kind",
+                        Account.class
+                )
+                .setParameter("actionId", action.getId())
+                .setParameter("kind", AccountKind.USAGE)
+                .getResultList();
+
+        if (!results.isEmpty()) {
+            return results.get(0);
+        }
+
+        Account usage = new Account();
+        usage.setName("Usage Account For Action " + action.getId());
+        usage.setKind(AccountKind.USAGE);
+
+        //usage.setAction(action);
+
+        em.persist(usage);
+
+        return usage;
+    }
+
+
+
+    public void addTransaction(Transaction tx) {
+        em.persist(tx);
+    }
+
+    public Transaction getTransaction(Integer id) {
+        return em.find(Transaction.class, id);
+    }
+
+
+
+    public void addEntry(Entry entry) {
+        em.persist(entry);
+    }
+
+    public List<Entry> getEntriesByAccount(Integer accountId) {
+        return em.createQuery(
+                "select e from Entry e where e.account.id = :id order by e.bookedAt desc",
+                Entry.class
+        ).setParameter("id", accountId).getResultList();
+    }
+
+    public Double getAccountBalance(Integer accountId) {
+        Double result = em.createQuery(
+                "select sum(e.amount) from Entry e where e.account.id = :id",
+                Double.class
+        ).setParameter("id", accountId).getSingleResult();
+
+        return result != null ? result : 0.0;
+    }
+
+
+
+    public void addPostingRule(PostingRule rule) {
+        em.persist(rule);
+    }
+
+    public List<PostingRule> getPostingRules() {
+        return em.createQuery("from PostingRule", PostingRule.class).getResultList();
+    }
+
+
+
+    public void addAuditLog(AuditLogEntry entry) {
+        em.persist(entry);
+    }
+
+    public List<AuditLogEntry> getAuditLogs() {
+        return em.createQuery(
+                "from AuditLogEntry order by timestamp desc",
+                AuditLogEntry.class
+        ).getResultList();
+    }
+
+    public void saveTransaction(Transaction tx) {
+        em.persist(tx);
+    }
+
+    public void saveResourceAllocation(ResourceAllocation allocation) {
+        em.persist(allocation);
+    }
+
+    public void saveEntry(Entry w) {
+        em.persist(w);
+    }
+
+
+//    public Plan loadPlanTree(Integer planId) {
+//        Plan plan = getPlan(planId);
+//
+//        // Force initialization of children (avoid lazy loading issues)
+//        plan.getChildren().size();
+//
+//        return plan;
+//    }
+}
