@@ -2,6 +2,7 @@ package com.project4.State;
 
 import com.project4.Resources.ImplementedAction;
 import com.project4.Resources.ProposedAction;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -12,7 +13,7 @@ public class ProposedState implements ActionState {
     private final AbandonedState abandonedState;
     private final SuspendedState suspendedState;
 
-    public ProposedState(InProgressState inProgressState, AbandonedState abandonedState, SuspendedState suspendedState) {
+    public ProposedState(InProgressState inProgressState, AbandonedState abandonedState, @Lazy SuspendedState suspendedState) {
         this.inProgressState = inProgressState;
         this.abandonedState = abandonedState;
         this.suspendedState = suspendedState;

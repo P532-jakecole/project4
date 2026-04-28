@@ -3,6 +3,7 @@ package com.project4.State;
 import com.project4.Repositories.ResourceAccess;
 import com.project4.Resources.ImplementedAction;
 import com.project4.Resources.ProposedAction;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -14,7 +15,7 @@ public class InProgressState implements ActionState {
     private final AbandonedState abandonedState;
     private final CompletedState completedState;
 
-    public InProgressState(SuspendedState suspendedState, AbandonedState abandonedState, CompletedState completedState, ResourceAccess resourceAccess) {
+    public InProgressState(@Lazy SuspendedState suspendedState, AbandonedState abandonedState, CompletedState completedState, ResourceAccess resourceAccess) {
         this.suspendedState = suspendedState;
         this.abandonedState = abandonedState;
         this.completedState = completedState;
