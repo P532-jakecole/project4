@@ -7,10 +7,7 @@ import com.project4.State.*;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class ActionManager {
@@ -106,13 +103,23 @@ public class ActionManager {
         ledgerGenerator.generateEntries(action);
     }
 
+    public ImplementedAction getImplementedAction(Integer proposedId){
+        return resourceAccess.getImplementedAction(proposedId);
+    }
+
     public void attachResourceAllocation(Integer actionId, Map<String, Object> inputs) {
         ProposedAction action = resourceAccess.getProposedAction(actionId);
         String kind = inputs.get("kind").toString();
-        LocalDate startDate = LocalDate.parse(inputs.get("start").toString());
-        Date start = java.sql.Date.valueOf(startDate);
-        LocalDate endDate = LocalDate.parse(inputs.get("end").toString());
-        Date end = java.sql.Date.valueOf(endDate);
+        Date start = null;
+        if(inputs.get("start").toString() != null && !Objects.equals(inputs.get("start").toString(), "")){
+            LocalDate startDate = LocalDate.parse(inputs.get("start").toString());
+            start = java.sql.Date.valueOf(startDate);
+        }
+        Date end = null;
+        if(inputs.get("end").toString() != null && !Objects.equals(inputs.get("end").toString(), "")) {
+            LocalDate endDate = LocalDate.parse(inputs.get("end").toString());
+            end = java.sql.Date.valueOf(endDate);
+        }
         Double quantity = Double.parseDouble(inputs.get("quantity").toString());
         Integer resourceTypeId = Integer.parseInt(inputs.get("resourceTypeId").toString());
         Integer assetId = null;

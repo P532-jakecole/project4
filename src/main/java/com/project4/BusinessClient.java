@@ -74,7 +74,7 @@ public class BusinessClient {
     }
 
     @GetMapping("/plans/{id}/report")
-    public List<String> getPlanReport(@PathVariable Integer id) {
+    public List<Map<String, Object>> getPlanReport(@PathVariable Integer id) {
         return planManager.generateDepthFirstReport(id);
     }
 
@@ -91,6 +91,11 @@ public class BusinessClient {
     @GetMapping("/actions")
     public List<ProposedAction> getActions(){
         return actionManager.getActions();
+    }
+
+    @GetMapping("/actions/{id}/implement")
+    public ImplementedAction getImplementedAction(@PathVariable Integer id){
+        return actionManager.getImplementedAction(id);
     }
 
     @PostMapping("/actions/{id}/implement")

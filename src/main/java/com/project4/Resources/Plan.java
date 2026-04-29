@@ -26,6 +26,7 @@ public class Plan extends PlanNode {
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<PlanNode> children = new ArrayList<>();
+
     public Protocol getSourceProtocol() {
         return sourceProtocol;
     }

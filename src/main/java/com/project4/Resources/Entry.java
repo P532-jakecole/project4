@@ -1,5 +1,7 @@
 package com.project4.Resources;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 import java.util.Date;
@@ -12,9 +14,11 @@ public class Entry {
     private Integer id;
 
     @ManyToOne
+    @JsonBackReference("transaction-entries")
     private Transaction transaction;
 
     @ManyToOne
+    @JsonIgnoreProperties({"entries", "hibernateLazyInitializer", "handler"})
     private Account account;
 
     private Double amount;

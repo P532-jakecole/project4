@@ -15,6 +15,17 @@ public class ImplementedAction {
         return id;
     }
 
+    @OneToOne
+    private ProposedAction proposedAction;
+
+    private Date actualStart;
+
+    private String actualParty;
+    private String actualLocation;
+
+    @Enumerated(EnumType.STRING)
+    private ActionStatus status;
+
     public ProposedAction getProposedAction() {
         return proposedAction;
     }
@@ -54,15 +65,4 @@ public class ImplementedAction {
     public void setActualLocation(String actualLocation) {
         this.actualLocation = actualLocation;
     }
-
-    @OneToOne
-    private ProposedAction proposedAction;
-
-    private Date actualStart;
-
-    private String actualParty;
-    private String actualLocation;
-
-    @Enumerated(EnumType.STRING)
-    private ActionStatus status;
 }

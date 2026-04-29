@@ -17,14 +17,6 @@ public class ProposedAction extends PlanNode {
     private String party;
     private String location;
 
-    public Date getTimeRef() {
-        return timeRef;
-    }
-
-    public void setTimeRef(Date timeRef) {
-        this.timeRef = timeRef;
-    }
-
     private Date timeRef;
 
     @Enumerated(EnumType.STRING)
@@ -33,8 +25,8 @@ public class ProposedAction extends PlanNode {
     @Transient
     private ActionState state;
 
-//    @OneToMany(mappedBy = "action", cascade = CascadeType.ALL, orphanRemoval = true)
-//    private List<ResourceAllocation> allocations = new ArrayList<>();
+    @OneToMany(mappedBy = "action", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private List<ResourceAllocation> allocations = new ArrayList<>();
 
     @Override
     public ActionStatus getStatus() {
@@ -43,12 +35,25 @@ public class ProposedAction extends PlanNode {
 
     @Override
     public double getTotalAllocatedQuantity(ResourceType type) {
-        return 0;
+        if (type == null) return 0;
+        return allocations.stream()
+                .filter(a -> a.getResourceType() != null &&
+                        a.getResourceType().getId().equals(type.getId()))
+                .mapToDouble(ResourceAllocation::getQuantity)
+                .sum();
     }
 
     @Override
     public void accept(PlanNodeVisitor visitor) {
         visitor.visit(this);
+    }
+
+    public Date getTimeRef() {
+        return timeRef;
+    }
+
+    public void setTimeRef(Date timeRef) {
+        this.timeRef = timeRef;
     }
 
 //    public List<ResourceAllocation> getAllocations() {

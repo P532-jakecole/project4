@@ -1,5 +1,6 @@
 package com.project4.Resources;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 
 import java.util.Date;
@@ -17,6 +18,7 @@ public class Transaction {
     private Date createdAt;
 
     @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL)
+    @JsonManagedReference("transaction-entries")
     private List<Entry> entries;
 
     public Integer getId() {

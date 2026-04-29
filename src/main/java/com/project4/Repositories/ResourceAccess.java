@@ -44,6 +44,12 @@ public class ResourceAccess {
 
         rt.setPoolAccount(account);
 
+        PostingRule rule = new PostingRule();
+        rule.setTriggerAccount(account);
+        rule.setOutputAccount(alertAccount);
+        rule.setStrategyType(StrategyType.OVER_CONSUMPTION);
+        em.persist(rule);
+
         ResourceKind rk = null;
 
         switch(kind.toLowerCase()){
@@ -94,6 +100,9 @@ public class ResourceAccess {
     public void addBalance(Account account, Double amount){
         System.out.println("Added Amount: " + amount);
         Double balance = account.getAmount();
+        if(balance == null){
+            balance = 0.0;
+        }
         balance += amount;
         account.setAmount(balance);
         em.persist(account);
@@ -244,12 +253,7 @@ public class ResourceAccess {
     }
 
     public Double getAccountBalance(Integer accountId) {
-        Double result = em.createQuery(
-                "select sum(e.amount) from Entry e where e.account.id = :id",
-                Double.class
-        ).setParameter("id", accountId).getSingleResult();
-
-        return result != null ? result : 0.0;
+        return em.find(Account.class, accountId).getAmount();
     }
 
 
@@ -294,7 +298,7 @@ public class ResourceAccess {
         allocation.setAssetId(assetId);
         allocation.setStartTime(start);
         allocation.setQuantity(quantity);
-        //allocation.setEndTime(end);
+        allocation.setEndTime(end);
 
         AllocationKind ak = null;
         switch (kind.toLowerCase()){

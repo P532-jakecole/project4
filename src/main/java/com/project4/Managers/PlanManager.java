@@ -7,6 +7,7 @@ import com.project4.Repositories.ResourceAccess;
 import com.project4.State.ProposedState;
 import org.springframework.stereotype.Service;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 @Service
@@ -27,10 +28,14 @@ public class PlanManager {
         Plan plan = new Plan();
         plan.setName((String) planData.get("name"));
 
-        if (planData.get("targetStartDate") != null) {
-            plan.setTargetStartDate(
-                    new Date(Long.parseLong(planData.get("targetStartDate").toString()))
-            );
+        if (planData.get("targetStartDate") != null && !planData.get("targetStartDate").toString().isEmpty()) {
+            try {
+                String dateStr = planData.get("targetStartDate").toString();
+                Date date = dateStr.contains("-")
+                        ? new SimpleDateFormat("yyyy-MM-dd").parse(dateStr)
+                        : new Date(Long.parseLong(dateStr));
+                plan.setTargetStartDate(date);
+            } catch (Exception e) {}
         }
 
         if (planData.get("protocolId") != null) {
@@ -61,6 +66,8 @@ public class PlanManager {
                 action.setName((String) data.get("name"));
                 action.setStatus(ActionStatus.PROPOSED);
                 action.setState(proposedState);
+                // Likely to change
+                action.setTimeRef(new Date());
                 action.setParent(parent);
                 nodes.add(action);
 
@@ -90,6 +97,8 @@ public class PlanManager {
             action.setProtocol(protocol);
             action.setStatus(ActionStatus.PROPOSED);
             action.setState(proposedState);
+            // Likely to change
+            action.setTimeRef(parentPlan.getTargetStartDate());
             action.setParent(parentPlan);
             stepMap.put(step, action);
         }
@@ -145,7 +154,7 @@ public class PlanManager {
     }
 
 
-    public List<String> generateDepthFirstReport(Integer planId) {
+    public List<Map<String, Object>> generateDepthFirstReport(Integer planId) {
 
         Plan plan = resourceAccess.getPlan(planId);
 

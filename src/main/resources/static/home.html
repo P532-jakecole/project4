@@ -74,7 +74,7 @@
 <script>
     let host = "";
     let selectedPlan = null;
-    let selectedAction = null;
+    let counter = 0;
 
 
     function showPage(id) {
@@ -84,7 +84,9 @@
         if (id === "dashboard") loadDashboard();
         if (id === "plans") loadPlans();
         if (id === "ledger") loadAccounts();
-        if (id === "report") loadReport();
+        if (id === "report"){
+            loadPlansIntoReportSelect();
+        }
         if (id === "catalogue"){
             loadCatalogue();
             loadProtocols();
@@ -162,7 +164,6 @@
         div.style.marginLeft = (level * 20) + "px";
 
         let type = node.children ? "PLAN" : "ACTION";
-        console.log(node.status)
         div.innerHTML = `
         <b>${node.name}</b> (${type}) - ${node.status}
     `;
@@ -223,12 +224,23 @@
 
         action.forEach(a => {
             const row = document.createElement("tr");
+            if(a.kind === "SPECIFIC"){
+                row.innerHTML = `
+                    <td>${a.resourceType.name}</td>
+                    <td>${a.quantity}</td>
+                    <td>${a.kind}</td>
+                    <td>${a.assetId}</td>
+                    <td>${a.start}</td>
+                    <td>${a.end}</td>
+                `;
+            }else{
+                row.innerHTML = `
+                    <td>${a.resourceType.name}</td>
+                    <td>${a.quantity}</td>
+                    <td>${a.kind}</td>
+                `;
+            }
 
-            row.innerHTML = `
-            <td>${a.resourceType.name}</td>
-            <td>${a.quantity}</td>
-            <td>${a.kind}</td>
-        `;
 
             table.appendChild(row);
         });
@@ -243,7 +255,7 @@
 
         accounts.forEach(a => {
             const row = document.createElement("tr");
-            let amount = (a.type === "POOL") ? a.amount : "-";
+            let amount = a.kind === "POOL" ? a.amount : "-";
             row.innerHTML = `
                 <td>${a.name}</td>
                 <td>${amount}</td>
@@ -268,7 +280,7 @@
             <td>${e.amount}</td>
             <td>${e.chargedAt}</td>
             <td>${e.bookedAt}</td>
-            <td>${e.proposedAction}</td>
+            <td>${e.proposedAction.id}</td>
         `;
 
             table.appendChild(row);
@@ -276,24 +288,61 @@
     }
 
 
-    async function loadReport() {
-        if (!selectedPlan) return;
-
-        const res = await fetch(host + `/api/plans/${selectedPlan}/report`);
+    async function loadReport(id) {
+        const res = await fetch(host + `/api/plans/${id}/report`);
         const report = await res.json();
 
         const container = document.getElementById("reportOutput");
         container.innerHTML = "";
 
         report.forEach(r => {
-            let div = document.createElement("div");
+            const div = document.createElement("div");
+            const indent = "&nbsp;".repeat(r.depth * 4);
+            const status = r.status ?? "UNKNOWN";
+
+            // build allocation string per resource type
+            const allocEntries = Object.entries(r.allocations || {});
+            const allocStr = allocEntries.length > 0
+                ? allocEntries.map(([name, qty]) => `${name}: ${qty}`).join(", ")
+                : "none";
 
             div.innerHTML = `
-            ${r.name} - ${r.status}
+            <div style="margin: 4px 0; font-family: monospace;">
+                ${indent} <b>${r.name}</b>
+                — ${r.type}
+                — Status: <span>${status}</span>
+                — Allocations: <span>${allocStr}</span>
+            </div>
         `;
 
             container.appendChild(div);
         });
+    }
+
+    async function loadPlansIntoReportSelect() {
+        const res = await fetch(host + "/api/plans");
+        const plans = await res.json();
+        const select = document.getElementById("reportPlanSelect");
+
+        console.log(plans)
+
+        plans.forEach(p => {
+            const option = document.createElement("option");
+            option.value = p.id;
+            option.text = p.name;
+            select.appendChild(option);
+        });
+    }
+
+    async function triggerReport() {
+        const id = document.getElementById("reportPlanSelect").value;
+
+        if (!id) {
+            alert("Please select a plan");
+            return;
+        }
+
+        await loadReport(id);
     }
 
     async function loadCatalogue() {
@@ -469,41 +518,75 @@
         addNode(childrenDiv);
     }
 
-    async function submitManualPlan() {
+    function addPlanNode(containerId = "planNodeList") {
+        const container = document.getElementById(containerId);
 
-        let rootNodes = Array.from(
-            document.getElementById("planBuilder").children
-        ).map(n => buildNodeJSON(n));
+        const div = document.createElement("div");
+        div.style.marginLeft = "20px";
+        div.style.borderLeft = "2px solid #ccc";
+        div.style.paddingLeft = "8px";
+        div.style.marginBottom = "8px";
 
-        let body = {
+        div.innerHTML = `
+        <select class="nodeType" onchange="toggleChildButton(this)">
+            <option value="ACTION">ACTION</option>
+            <option value="PLAN">PLAN</option>
+        </select>
+        <input class="nodeName" placeholder="Node Name">
+        <button type="button" onclick="addChildNode(this)">+ Add Child</button>
+        <div class="children"></div>
+    `;
+
+        div.querySelector("button").style.display = "none";
+
+        container.appendChild(div);
+    }
+
+    function toggleChildButton(select) {
+        const btn = select.parentElement.querySelector("button");
+        btn.style.display = select.value === "PLAN" ? "inline" : "none";
+    }
+
+    function addChildNode(btn) {
+        const childContainer = btn.parentElement.querySelector(".children");
+        const tempId = "children_" + counter;
+        counter++;
+        childContainer.id = tempId;
+        addPlanNode(tempId);
+    }
+
+    async function submitManualPlan(e) {
+        e.preventDefault();
+
+        const rootNodes = Array.from(
+            document.getElementById("planNodeList").children
+        ).map(n => buildHierarchy(n));
+
+        const body = {
             name: document.getElementById("manualPlanName").value,
+            targetStartDate: document.getElementById("manualPlanDate").value || null,
             children: rootNodes
         };
 
         await fetch(host + "/api/plans", {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body)
         });
 
         await loadPlans();
     }
 
-    function buildNodeJSON(nodeElement) {
+    function buildHierarchy(nodeElement) {
+        const type = nodeElement.querySelector(".nodeType").value;
+        const name = nodeElement.querySelector(".nodeName").value;
 
-        let type = nodeElement.querySelector(".nodeType").value;
-        let name = nodeElement.querySelector(".nodeName").value;
+        const obj = { type, name };
 
-        let obj = {
-            type: type,
-            name: name
-        };
-
-        let childrenContainer = nodeElement.querySelector(".children");
-
+        const childrenContainer = nodeElement.querySelector(".children");
         if (childrenContainer && childrenContainer.children.length > 0) {
             obj.children = Array.from(childrenContainer.children)
-                .map(child => buildNodeJSON(child));
+                .map(child => buildHierarchy(child));
         }
 
         return obj;
@@ -543,13 +626,12 @@
 
         const res = await fetch(host + `/api/actions/${id}`);
         const action = await res.json();
-        console.log(action)
 
         document.getElementById("actionName").innerText = action.name;
         document.getElementById("actionState").innerText = action.status;
 
         renderTransitions(action);
-        renderPlanReality(action);
+        await renderPlanReality(action);
         await loadAllocations(action);
     }
 
@@ -594,26 +676,30 @@
         await loadActionDetail();
     }
 
-    function renderPlanReality(action) {
+    async function renderPlanReality(action) {
 
         const div = document.getElementById("planReality");
 
-        if (action.status != "COMPLETED" || action.status != "IN_PROGRESS") {
+        if (!(action.status === "COMPLETED" || action.status === "IN_PROGRESS")) {
             div.innerHTML = "<i>Not implemented yet</i>";
             return;
         }
 
-        const impl = action.implementedAction;
+        const res = await fetch(host + `/api/actions/${action.id}/implement`);
+        const implemented = await res.json();
+
+        console.log(action)
 
         div.innerHTML = `
         <b>Planned:</b><br>
         Party: ${action.party || "N/A"}<br>
-        Location: ${action.location || "N/A"}<br><br>
+        Location: ${action.location || "N/A"}<br>
+        Start: ${action.timeref || "N/A"}<br>
 
         <b>Actual:</b><br>
-        Party: ${impl.actualParty || "N/A"}<br>
-        Location: ${impl.actualLocation || "N/A"}<br>
-        Start: ${impl.actualStart || "N/A"}
+        Party: ${implemented.actualParty || "N/A"}<br>
+        Location: ${implemented.actualLocation || "N/A"}<br>
+        Start: ${implemented.actualStart || "N/A"}
     `;
     }
 
@@ -754,7 +840,8 @@
                 <th>Qty</th>
                 <th>Kind</th>
                 <th>Asset</th>
-                <th>Time</th>
+                <th>Start Time</th>
+                <th>End Time</th>
             </tr>
             </thead>
             <tbody></tbody>
@@ -826,7 +913,7 @@
     <h3>Entries</h3>
     <table id="entries">
         <thead>
-        <tr><th>Amount</th><th>Charged</th><th>Booked</th></tr>
+        <tr><th>Amount</th><th>Charged</th><th>Booked</th><th>Action</th></tr>
         </thead>
         <tbody></tbody>
     </table>
@@ -835,9 +922,14 @@
 
 
 <div id="report" class="container hidden">
-    <h2>Plan Report</h2>
+    <h3>Plan Report</h3>
+    <select id="reportPlanSelect">
+        <option value="">Select Plan</option>
+    </select>
+    <button onclick="triggerReport()">Load Report</button>
     <div id="reportOutput"></div>
 </div>
+
 
 <div id="catalogue" class="container hidden">
 
@@ -906,13 +998,16 @@
     <hr>
 
     <h3>Create Plan From Scratch</h3>
+    <form onsubmit="submitManualPlan(event)">
+        <input id="manualPlanName" placeholder="Plan Name" required>
+        <input id="manualPlanDate" type="date">
 
-    <input id="manualPlanName" placeholder="Plan Name">
-    <button onclick="addRootNode()">+ Add Root Node</button>
+        <h4>Nodes</h4>
+        <div id="planNodeList"></div>
+        <button type="button" onclick="addPlanNode()">+ Add Node</button>
 
-    <div id="planBuilder"></div>
-
-    <button onclick="submitManualPlan()">Create Manual Plan</button>
+        <button type="submit">Create Plan</button>
+    </form>
 
 </div>
 
