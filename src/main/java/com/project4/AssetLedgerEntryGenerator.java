@@ -21,7 +21,7 @@ public class AssetLedgerEntryGenerator extends AbstractLedgerEntryGenerator {
     }
 
     @Override
-    protected List<ResourceAllocation> selectAllocations(ImplementedAction action) {
+    public List<ResourceAllocation> selectAllocations(ImplementedAction action) {
 
         ProposedAction proposed = action.getProposedAction();
         if (proposed == null) {
@@ -43,7 +43,7 @@ public class AssetLedgerEntryGenerator extends AbstractLedgerEntryGenerator {
     }
 
     @Override
-    protected void validate(List<ResourceAllocation> allocs) {
+    public void validate(List<ResourceAllocation> allocs) {
 
         for (ResourceAllocation a : allocs) {
 
@@ -61,7 +61,7 @@ public class AssetLedgerEntryGenerator extends AbstractLedgerEntryGenerator {
     }
 
     @Override
-    protected Entry buildWithdrawal(
+    public Entry buildWithdrawal(
             Transaction tx, ResourceAllocation a) {
         Entry e = new Entry();
         e.setTransaction(tx);
@@ -86,7 +86,7 @@ public class AssetLedgerEntryGenerator extends AbstractLedgerEntryGenerator {
     }
 
     @Override
-    protected Entry buildDeposit(
+    public Entry buildDeposit(
             Transaction tx, ResourceAllocation a) {
         Entry e = new Entry();
         e.setTransaction(tx);

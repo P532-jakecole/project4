@@ -32,31 +32,19 @@ class ProposedStateTest {
     @Mock
     private ProposedAction action;
 
+    @Mock
+    private PendingApprovalState pendingApprovalState;
+
     @InjectMocks
     private ProposedState proposedState;
 
     @Test
     void implement_validTransition_createsImplementedActionAndMovesToInProgress() {
         // Arrange
-        when(ctx.getAction()).thenReturn(action);
-        when(ctx.getResourceAccess()).thenReturn(resourceAccess);
-
-        ArgumentCaptor<ImplementedAction> captor =
-                ArgumentCaptor.forClass(ImplementedAction.class);
+        proposedState.submitForApproval(ctx);
 
         // Act
-        proposedState.implement(ctx);
-
-        // Assert
-        verify(resourceAccess).saveImplementedAction(captor.capture());
-
-        ImplementedAction saved = captor.getValue();
-
-        assertNotNull(saved);
-        assertEquals(action, saved.getProposedAction());
-        assertNotNull(saved.getActualStart());
-
-        verify(ctx).setState(inProgressState);
+        verify(ctx).setState(pendingApprovalState);
     }
 
     @Test

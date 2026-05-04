@@ -49,17 +49,19 @@ public class PendingApprovalState implements ActionState {
 
     @Override
     public void approve(ActionContext ctx){
-        ProposedAction action = ctx.getAction();
-
-        ImplementedAction implemented = new ImplementedAction();
-        implemented.setProposedAction(action);
-        implemented.setActualStart(new Date());
-        implemented.setActualParty(ctx.getActualParty());
-        implemented.setActualLocation(ctx.getActualLocation());
-
-        ctx.setImplementedAction(implemented);
-
-        //ctx.getResourceAccess().saveImplementedAction(implemented);
+//        ProposedAction action = ctx.getAction();
+//
+//        ImplementedAction implemented = new ImplementedAction();
+//        implemented.setProposedAction(action);
+//        implemented.setActualStart(new Date());
+//        implemented.setActualParty(ctx.getActualParty());
+//        implemented.setActualLocation(ctx.getActualLocation());
+//
+//        ctx.setImplementedAction(implemented);
+//
+//        //ctx.getResourceAccess().saveImplementedAction(implemented);
+//
+//        ctx.setState(inProgressState);
 
         ctx.setState(inProgressState);
     }

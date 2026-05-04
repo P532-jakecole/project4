@@ -90,7 +90,6 @@ public class ActionManager {
     }
 
     public void generateLedgerEntries(ImplementedAction action) {
-        System.out.println("Generating entries");
         ledgerGenerator.generateEntries(action);
         assetLedgerEntryGenerator.generateEntries(action);
     }

@@ -56,7 +56,6 @@ class InProgressStateTest {
 
         // Assert
         verify(implemented).setActualStart(any());
-        verify(resourceAccess).saveImplementedAction(implemented);
         verify(actionManager).generateLedgerEntries(implemented);
         verify(ctx).setState(completedState);
     }

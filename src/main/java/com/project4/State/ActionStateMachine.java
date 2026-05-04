@@ -145,6 +145,7 @@ public class ActionStateMachine {
 
     private void persist(ActionContext ctx) {
         resourceAccess.saveProposedAction(ctx.getAction());
+        System.out.println("Here");
 
         if (ctx.getImplementedAction() != null) {
             resourceAccess.saveImplementedAction(ctx.getImplementedAction());
