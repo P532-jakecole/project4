@@ -57,7 +57,7 @@ public class PlanManager {
         } else if (planData.get("children") != null) {
             List<Map<String, Object>> childData =
                     (List<Map<String, Object>>) planData.get("children");
-            List<PlanNode> nodes = buildPlanNodes(childData, plan);
+            List<PlanNode> nodes = buildPlanNodes(childData, plan, (String) planData.get("location"), (String) planData.get("party"));
             plan.setChildren(nodes);
             resourceAccess.savePlan(plan);
         }else{
@@ -65,7 +65,7 @@ public class PlanManager {
         }
     }
 
-    private List<PlanNode> buildPlanNodes(List<Map<String, Object>> dataList, PlanNode parent) {
+    private List<PlanNode> buildPlanNodes(List<Map<String, Object>> dataList, PlanNode parent, String location, String party) {
         List<PlanNode> nodes = new ArrayList<>();
 
         for (Map<String, Object> data : dataList) {
@@ -76,8 +76,8 @@ public class PlanManager {
                 action.setName((String) data.get("name"));
                 action.setStatus(ActionStatus.PROPOSED);
                 action.setState(proposedState);
-                action.setLocation((String) data.get("location"));
-                action.setParty((String) data.get("party"));
+                action.setLocation(location);
+                action.setParty(party);
                 // Likely to change
                 action.setTimeRef(new Date());
                 action.setParent(parent);
@@ -91,7 +91,7 @@ public class PlanManager {
                 if (data.get("children") != null) {
                     List<Map<String, Object>> childData =
                             (List<Map<String, Object>>) data.get("children");
-                    subPlan.setChildren(buildPlanNodes(childData, subPlan));
+                    subPlan.setChildren(buildPlanNodes(childData, subPlan, location, party));
                 }
 
                 nodes.add(subPlan);

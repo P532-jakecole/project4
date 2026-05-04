@@ -35,6 +35,7 @@ public class PendingApprovalStateTest {
 
         // Assert
         verify(ctx).setState(inProgressState);
+        verify(ctx).setImplementedAction(any(ImplementedAction.class));
     }
 
     @Test

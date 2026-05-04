@@ -381,7 +381,6 @@
             radio.addEventListener("change", renderEntries);
         });
 
-        console.log(currentEntries);
 
         const filtered = currentEntries.filter(e => {
             if (filter === "all") return true;
@@ -445,7 +444,6 @@
         const plans = await res.json();
         const select = document.getElementById("reportPlanSelect");
 
-        console.log(plans)
 
         plans.forEach(p => {
             const option = document.createElement("option");
@@ -690,6 +688,8 @@
         const body = {
             name: document.getElementById("manualPlanName").value,
             targetStartDate: document.getElementById("manualPlanDate").value || null,
+            location: loc,
+            party: party,
             children: rootNodes
         };
 
@@ -826,7 +826,6 @@
         const res = await fetch(host + `/api/actions/${action.id}/implement`);
         const implemented = await res.json();
 
-        console.log(action);
 
         div.innerHTML = `
         <b>Planned:</b><br>
