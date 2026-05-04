@@ -37,8 +37,8 @@ public class ReversalLedgerEntryGenerator extends AbstractLedgerEntryGenerator {
 
         return allocations.stream()
                 .filter(a -> a.getResourceType() != null)
-                .filter(a -> a.getResourceType().getKind() == ResourceKind.ASSET)
-                .filter(a -> a.getKind() == AllocationKind.SPECIFIC)
+                .filter(a -> ((a.getResourceType().getKind() == ResourceKind.ASSET) && (a.getKind() == AllocationKind.SPECIFIC))
+                        || a.getResourceType().getKind() == ResourceKind.CONSUMABLE)
                 .toList();
     }
 
