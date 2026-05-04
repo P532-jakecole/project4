@@ -4,6 +4,6 @@ import com.project4.Resources.Plan;
 import com.project4.Resources.ProposedAction;
 
 public interface PlanNodeVisitor {
-    void visit(Plan plan);
-    void visit(ProposedAction action);
+    void visitComposite(Plan plan);
+    void visitLeaf(ProposedAction action);
 }

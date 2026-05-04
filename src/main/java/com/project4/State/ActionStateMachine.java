@@ -85,6 +85,52 @@ public class ActionStateMachine {
         persist(ctx);
     }
 
+    public void approve(Integer actionId, String party, String location) throws IllegalStateTransitionException {
+
+        ProposedAction action = resourceAccess.getProposedAction(actionId);
+
+        ActionContext ctx = new ActionContext(action, actionManager, resourceAccess);
+        ctx.setActualParty(party);
+        ctx.setActualLocation(location);
+
+        getState(action).approve(ctx);
+
+        persist(ctx);
+    }
+
+    public void reject(Integer actionId) throws IllegalStateTransitionException {
+
+        ProposedAction action = resourceAccess.getProposedAction(actionId);
+
+        ActionContext ctx = new ActionContext(action, actionManager, resourceAccess);
+
+        getState(action).reject(ctx);
+
+        persist(ctx);
+    }
+
+    public void reopen(Integer actionId) throws IllegalStateTransitionException {
+
+        ProposedAction action = resourceAccess.getProposedAction(actionId);
+
+        ActionContext ctx = new ActionContext(action, actionManager, resourceAccess);
+
+        getState(action).reopen(ctx);
+
+        persist(ctx);
+    }
+
+    public void submitForApproval(Integer actionId) throws IllegalStateTransitionException {
+
+        ProposedAction action = resourceAccess.getProposedAction(actionId);
+
+        ActionContext ctx = new ActionContext(action, actionManager, resourceAccess);
+
+        getState(action).submitForApproval(ctx);
+
+        persist(ctx);
+    }
+
 
     private ActionState getState(ProposedAction action) {
         String stateName = action.getStatus().name();

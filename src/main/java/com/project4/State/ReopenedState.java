@@ -2,20 +2,20 @@ package com.project4.State;
 
 import com.project4.Resources.ImplementedAction;
 import com.project4.Resources.ProposedAction;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
 
 @Component
-public class CompletedState implements ActionState {
+public class ReopenedState implements ActionState {
 
-    private final ReopenedState reopenedState;
+    private final AbandonedState abandonedState;
+    private final CompletedState completedState;
 
-    public CompletedState(@Lazy ReopenedState reopenedState) {
-        this.reopenedState = reopenedState;
+    public ReopenedState(AbandonedState abandonedState, CompletedState completedState) {
+        this.abandonedState = abandonedState;
+        this.completedState = completedState;
     }
-
 
     @Override
     public void implement(ActionContext ctx) throws IllegalStateTransitionException {
@@ -33,13 +33,25 @@ public class CompletedState implements ActionState {
     }
 
     @Override
-    public void complete(ActionContext ctx) throws IllegalStateTransitionException {
-        throw new IllegalStateTransitionException();
+    public void complete(ActionContext ctx){
+        ProposedAction action = ctx.getAction();
+
+        ImplementedAction implemented =
+                ctx.getResourceAccess().getImplementedByProposed(action.getId());
+
+        implemented.setActualStart(new Date());
+
+        ctx.setImplementedAction(implemented);
+
+        //ctx.getResourceAccess().saveImplementedAction(implemented);
+        ctx.getActionManager().generateLedgerEntries(implemented);
+
+        ctx.setState(completedState);
     }
 
     @Override
-    public void abandon(ActionContext ctx) throws IllegalStateTransitionException {
-        throw new IllegalStateTransitionException();
+    public void abandon(ActionContext ctx){
+        ctx.setState(abandonedState);
     }
 
     @Override
@@ -58,19 +70,12 @@ public class CompletedState implements ActionState {
     }
 
     @Override
-    public void reopen(ActionContext ctx){
-
-        ProposedAction action = ctx.getAction();
-        ImplementedAction implemented =
-                ctx.getResourceAccess().getImplementedByProposed(action.getId());
-
-        ctx.getActionManager().generateReverseLedgerEntries(implemented);
-
-        ctx.setState(reopenedState);
+    public void reopen(ActionContext ctx) throws IllegalStateTransitionException {
+        throw new IllegalStateTransitionException();
     }
 
     @Override
     public String name() {
-        return "COMPLETED";
+        return "REOPENED";
     }
 }

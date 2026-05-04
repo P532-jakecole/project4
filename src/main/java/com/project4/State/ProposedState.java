@@ -9,27 +9,19 @@ import java.util.Date;
 
 @Component
 public class ProposedState implements ActionState {
-    private final InProgressState inProgressState;
     private final AbandonedState abandonedState;
     private final SuspendedState suspendedState;
+    private final PendingApprovalState pendingApprovalState;
 
-    public ProposedState(InProgressState inProgressState, AbandonedState abandonedState, @Lazy SuspendedState suspendedState) {
-        this.inProgressState = inProgressState;
+    public ProposedState(AbandonedState abandonedState, @Lazy SuspendedState suspendedState, @Lazy PendingApprovalState pendingApprovalState) {
         this.abandonedState = abandonedState;
         this.suspendedState = suspendedState;
+        this.pendingApprovalState = pendingApprovalState;
     }
 
     @Override
-    public void implement(ActionContext ctx) {
-        ProposedAction action = ctx.getAction();
-
-        ImplementedAction implemented = new ImplementedAction();
-        implemented.setProposedAction(action);
-        implemented.setActualStart(new Date());
-
-        ctx.getResourceAccess().saveImplementedAction(implemented);
-
-        ctx.setState(inProgressState);
+    public void implement(ActionContext ctx) throws IllegalStateTransitionException {
+        throw new IllegalStateTransitionException();
     }
 
     @Override
@@ -50,6 +42,26 @@ public class ProposedState implements ActionState {
     @Override
     public void abandon(ActionContext ctx) {
         ctx.setState(abandonedState);
+    }
+
+    @Override
+    public void submitForApproval(ActionContext ctx){
+        ctx.setState(pendingApprovalState);
+    }
+
+    @Override
+    public void approve(ActionContext ctx) throws IllegalStateTransitionException {
+        throw new IllegalStateTransitionException();
+    }
+
+    @Override
+    public void reject(ActionContext ctx) throws IllegalStateTransitionException {
+        throw new IllegalStateTransitionException();
+    }
+
+    @Override
+    public void reopen(ActionContext ctx) throws IllegalStateTransitionException {
+        throw new IllegalStateTransitionException();
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.project4.Engines;
 
 import com.project4.Iterator.DepthFirstPlanIterator;
+import com.project4.Iterator.FilteredPlanIterator;
 import com.project4.Managers.ResourceTypeManager;
 import com.project4.Repositories.ResourceAccess;
 import com.project4.Resources.Plan;
@@ -9,6 +10,7 @@ import com.project4.Resources.ResourceType;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.function.Predicate;
 
 @Service
 public class ReportingEngine {
@@ -18,12 +20,22 @@ public class ReportingEngine {
         this.resourceAccess = resourceAccess;
     }
 
-    public List<Map<String, Object>> generateDepthFirstReport(Plan plan) {
+    public List<Map<String, Object>> generateDepthFirstReport(Plan plan, String status) {
 
         List<Map<String, Object>> report = new ArrayList<>();
         List<ResourceType> allResourceTypes = resourceAccess.getAllResourceTypes();
 
-        DepthFirstPlanIterator iterator = new DepthFirstPlanIterator(plan);
+        Iterator<PlanNode> iterator;
+
+        if (status != null && !status.isBlank()) {
+            Predicate<PlanNode> statusFilter = node ->
+                    node.getStatus() != null &&
+                            node.getStatus().name().equalsIgnoreCase(status);
+            iterator = new FilteredPlanIterator(
+                    new DepthFirstPlanIterator(plan), statusFilter);
+        } else {
+            iterator = new DepthFirstPlanIterator(plan);
+        }
 
         while (iterator.hasNext()) {
 
@@ -51,6 +63,10 @@ public class ReportingEngine {
 
         return report;
     }
+
+//    public List<Map<String, Object>> generateDepthFirstReport(Plan plan) {
+//        return generateDepthFirstReport(plan, null);
+//    }
 
     private int getDepth(PlanNode node) {
         int depth = 0;

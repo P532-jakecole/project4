@@ -22,6 +22,8 @@ public class ResourceType {
     @JsonBackReference
     private Account poolAccount;
 
+    private double unitCost;
+
     public Integer getId() {
         return id;
     }
@@ -56,5 +58,13 @@ public class ResourceType {
 
     public void setPoolAccount(Account poolAccount) {
         this.poolAccount = poolAccount;
+    }
+
+    public double getUnitCost() {
+        return unitCost;
+    }
+
+    public void setUnitCost(double unitCost) {
+        this.unitCost = unitCost;
     }
 }

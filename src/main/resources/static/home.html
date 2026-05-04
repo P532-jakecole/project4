@@ -75,6 +75,9 @@
     let host = "";
     let selectedPlan = null;
     let counter = 0;
+    let currentEntries = [];
+    let party = "System";
+    let loc = "Example";
 
 
     function showPage(id) {
@@ -123,23 +126,27 @@
         });
     }
 
-
     async function loadPlans() {
         const res = await fetch(host + "/api/plans");
         const plans = await res.json();
+
+        document.getElementById("depth-label").textContent =
+            document.getElementById("depth-slider").value;
+
+        document.getElementById("depth-slider").addEventListener("input", function () {
+            document.getElementById("depth-label").textContent = this.value;
+        });
 
         const table = document.querySelector("#planTable tbody");
         table.innerHTML = "";
 
         plans.forEach(p => {
             const row = document.createElement("tr");
-
             row.innerHTML = `
             <td>${p.id}</td>
             <td>${p.name}</td>
             <td><button onclick="loadPlanDetail(${p.id})">View</button></td>
         `;
-
             table.appendChild(row);
         });
     }
@@ -148,33 +155,104 @@
         selectedPlan = id;
         showPage("planDetail");
 
-        const res = await fetch(host + `/api/plans/${id}`);
-        const tree = await res.json();
+        const depthLimit = parseInt(document.getElementById("depth-slider").value);
+
+        const res = await fetch(host + `/api/plans/${id}?depthLimit=${depthLimit}`);
+        const data = await res.json();
 
         const container = document.getElementById("planTree");
         container.innerHTML = "";
 
-        renderNode(tree, container, 0);
+        if (Array.isArray(data)) {
+            renderFlatNodes(data, container);
+        } else {
+            renderNode(data, container, 0);
+        }
+
+        populateNodeSelector(data);
+
+        // Reset metrics panel
+        document.getElementById("completionRatio").textContent = "-";
+        document.getElementById("totalCost").textContent = "-";
+        document.getElementById("riskScore").textContent = "-";
+        document.getElementById("nodeSelector").value = "";
     }
 
+    function renderFlatNodes(nodes, container) {
+        nodes.forEach(node => {
+            let div = document.createElement("div");
+            div.style.marginLeft = (node.depth * 20) + "px";
+            div.innerHTML = `
+            <b>${node.name}</b> (${node.type}) - ${node.status}
+            ${node.collapsed ? `<span style="color: grey"> collapsed</span>` : ""}
+        `;
+            container.appendChild(div);
+        });
+    }
 
     function renderNode(node, container, level) {
         let div = document.createElement("div");
-
         div.style.marginLeft = (level * 20) + "px";
-
         let type = node.children ? "PLAN" : "ACTION";
-        div.innerHTML = `
-        <b>${node.name}</b> (${type}) - ${node.status}
-    `;
-        //${!node.children ? `<button onclick="selectAction(${node.id})">Open</button>` : ""}
-
+        div.innerHTML = `<b>${node.name}</b> (${type}) - ${node.status}`;
         container.appendChild(div);
-
         if (node.children) {
             node.children.forEach(child => renderNode(child, container, level + 1));
         }
     }
+
+
+    // async function loadPlans() {
+    //     const res = await fetch(host + "/api/plans");
+    //     const plans = await res.json();
+    //
+    //     const table = document.querySelector("#planTable tbody");
+    //     table.innerHTML = "";
+    //
+    //     plans.forEach(p => {
+    //         const row = document.createElement("tr");
+    //
+    //         row.innerHTML = `
+    //         <td>${p.id}</td>
+    //         <td>${p.name}</td>
+    //         <td><button onclick="loadPlanDetail(${p.id})">View</button></td>
+    //     `;
+    //
+    //         table.appendChild(row);
+    //     });
+    // }
+    //
+    // async function loadPlanDetail(id) {
+    //     selectedPlan = id;
+    //     showPage("planDetail");
+    //
+    //     const res = await fetch(host + `/api/plans/${id}`);
+    //     const tree = await res.json();
+    //
+    //     const container = document.getElementById("planTree");
+    //     container.innerHTML = "";
+    //
+    //     renderNode(tree, container, 0);
+    // }
+    //
+    //
+    // function renderNode(node, container, level) {
+    //     let div = document.createElement("div");
+    //
+    //     div.style.marginLeft = (level * 20) + "px";
+    //
+    //     let type = node.children ? "PLAN" : "ACTION";
+    //     div.innerHTML = `
+    //     <b>${node.name}</b> (${type}) - ${node.status}
+    // `;
+    //     //${!node.children ? `<button onclick="selectAction(${node.id})">Open</button>` : ""}
+    //
+    //     container.appendChild(div);
+    //
+    //     if (node.children) {
+    //         node.children.forEach(child => renderNode(child, container, level + 1));
+    //     }
+    // }
 
 
     // async function selectAction(id) {
@@ -266,41 +344,84 @@
         });
     }
 
+    // async function loadEntries(id) {
+    //     const res = await fetch(host + `/api/accounts/${id}/entries`);
+    //     const entries = await res.json();
+    //
+    //     const table = document.querySelector("#entries tbody");
+    //     table.innerHTML = "";
+    //
+    //     entries.forEach(e => {
+    //         const row = document.createElement("tr");
+    //
+    //         row.innerHTML = `
+    //         <td>${e.amount}</td>
+    //         <td>${e.chargedAt}</td>
+    //         <td>${e.bookedAt}</td>
+    //         <td>${e.proposedAction.id}</td>
+    //     `;
+    //
+    //         table.appendChild(row);
+    //     });
+    // }
+
+
     async function loadEntries(id) {
         const res = await fetch(host + `/api/accounts/${id}/entries`);
-        const entries = await res.json();
+        currentEntries = await res.json();
+        renderEntries();
+    }
 
+    function renderEntries() {
+        const filter = document.querySelector("input[name='entryFilter']:checked").value;
         const table = document.querySelector("#entries tbody");
         table.innerHTML = "";
 
-        entries.forEach(e => {
-            const row = document.createElement("tr");
+        document.querySelectorAll("input[name='entryFilter']").forEach(radio => {
+            radio.addEventListener("change", renderEntries);
+        });
 
+        console.log(currentEntries);
+
+        const filtered = currentEntries.filter(e => {
+            if (filter === "all") return true;
+            if (filter === "consumable") return e.account.resourceType.kind === "CONSUMABLE";
+            if (filter === "asset") return e.account.resourceType.kind === "ASSET";
+            return true;
+        });
+
+        filtered.forEach(e => {
+            const row = document.createElement("tr");
             row.innerHTML = `
             <td>${e.amount}</td>
             <td>${e.chargedAt}</td>
             <td>${e.bookedAt}</td>
             <td>${e.proposedAction.id}</td>
         `;
-
             table.appendChild(row);
         });
     }
 
-
-    async function loadReport(id) {
-        const res = await fetch(host + `/api/plans/${id}/report`);
+    async function loadReport(id, status = "") {
+        const url = status
+            ? host + `/api/plans/${id}/report?status=${status}`
+            : host + `/api/plans/${id}/report`;
+        const res = await fetch(host + url);
         const report = await res.json();
 
         const container = document.getElementById("reportOutput");
         container.innerHTML = "";
+
+        if (report.length === 0) {
+            container.innerHTML = "<p>No nodes match the selected status.</p>";
+            return;
+        }
 
         report.forEach(r => {
             const div = document.createElement("div");
             const indent = "&nbsp;".repeat(r.depth * 4);
             const status = r.status ?? "UNKNOWN";
 
-            // build allocation string per resource type
             const allocEntries = Object.entries(r.allocations || {});
             const allocStr = allocEntries.length > 0
                 ? allocEntries.map(([name, qty]) => `${name}: ${qty}`).join(", ")
@@ -342,7 +463,8 @@
             return;
         }
 
-        await loadReport(id);
+        const status = document.getElementById("reportStatusFilter").value;
+        await loadReport(id, status);
     }
 
     async function loadCatalogue() {
@@ -439,7 +561,8 @@
         const body = {
             name: document.getElementById("rtName").value,
             kind: document.getElementById("rtKind").value,
-            unit: document.getElementById("rtUnit").value
+            unit: document.getElementById("rtUnit").value,
+            unitCost: document.getElementById("unitCost").value
         };
 
         await fetch(host + "/api/resource-types", {
@@ -471,6 +594,8 @@
 
         let body = {
             name: document.getElementById("planName").value,
+            party: party,
+            location: loc,
             targetStartDate: document.getElementById("planStart").value
                 ? new Date(document.getElementById("planStart").value).getTime()
                 : null,
@@ -631,8 +756,8 @@
         document.getElementById("actionState").innerText = action.status;
 
         renderTransitions(action);
-        await renderPlanReality(action);
         await loadAllocations(action);
+        await renderPlanReality(action);
     }
 
     function renderTransitions(action) {
@@ -641,18 +766,24 @@
         container.innerHTML = "";
 
         const transitions = {
-            PROPOSED: ["implement", "suspend", "abandon"],
+            PROPOSED: ["approval", "suspend", "abandon"],
             IN_PROGRESS: ["complete", "suspend", "abandon"],
             SUSPENDED: ["resume", "abandon"],
-            COMPLETED: [],
-            ABANDONED: []
+            COMPLETED: ["reopen"],
+            ABANDONED: [],
+            PENDING_APPROVAL: ["approve", "reject"],
+            REOPENED: ["complete", "abandon"]
         };
 
         let allowed = transitions[action.status] || [];
 
         allowed.forEach(t => {
             let btn = document.createElement("button");
-            btn.innerText = t;
+            if(t === "approval"){
+                btn.innerText = "Submit for Approval";
+            }else{
+                btn.innerText = t;
+            }
             btn.onclick = () => triggerTransition(action.id, t);
             container.appendChild(btn);
         });
@@ -665,6 +796,13 @@
         if (action === "suspend") {
             let reason = prompt("Reason:");
             body.reason = reason;
+        }
+
+        if(action === "approve"){
+            body = {
+                party: party,
+                location: loc
+            }
         }
 
         await fetch(host + `/api/actions/${id}/${action}`, {
@@ -680,7 +818,7 @@
 
         const div = document.getElementById("planReality");
 
-        if (!(action.status === "COMPLETED" || action.status === "IN_PROGRESS")) {
+        if (!(action.status === "COMPLETED" || action.status === "IN_PROGRESS" || action.status === "REOPENED")) {
             div.innerHTML = "<i>Not implemented yet</i>";
             return;
         }
@@ -688,13 +826,13 @@
         const res = await fetch(host + `/api/actions/${action.id}/implement`);
         const implemented = await res.json();
 
-        console.log(action)
+        console.log(action);
 
         div.innerHTML = `
         <b>Planned:</b><br>
         Party: ${action.party || "N/A"}<br>
         Location: ${action.location || "N/A"}<br>
-        Start: ${action.timeref || "N/A"}<br>
+        Start: ${action.timeRef || "N/A"}<br>
 
         <b>Actual:</b><br>
         Party: ${implemented.actualParty || "N/A"}<br>
@@ -728,8 +866,8 @@
             quantity: parseFloat(document.getElementById("allocQty").value),
             kind: document.getElementById("allocKind").value,
             assetId: document.getElementById("allocAssetId").value || null,
-            start: document.getElementById("allocStart").value,
-            end: document.getElementById("allocEnd").value
+            start: new Date(document.getElementById("allocStart").value),
+            end: new Date(document.getElementById("allocEnd").value)
         };
 
         await fetch(host + `/api/actions/${actionId}/allocations`, {
@@ -739,6 +877,58 @@
         });
 
         await loadActionDetail();
+    }
+
+    async function loadMetrics(id) {
+        const res = await fetch(host + `/api/plans/${id}/metrics`);
+        const metrics = await res.json();
+
+        document.getElementById("completionRatio").textContent =
+            (metrics.completionRatio * 100).toFixed(1) + "%";
+        document.getElementById("totalCost").textContent =
+            "$" + metrics.totalCost.toFixed(2);
+        document.getElementById("riskScore").textContent =
+            metrics.riskScore;
+    }
+
+    async function submitMetrics() {
+        const selector = document.getElementById("nodeSelector");
+        const selectedId = selector.value;
+
+        if (!selectedId) {
+            alert("Please select a node first.");
+            return;
+        }
+
+        await loadMetrics(selectedId);
+    }
+
+    function populateNodeSelector(nodes) {
+        const selector = document.getElementById("nodeSelector");
+        selector.innerHTML = `<option value=""> Select a node </option>`;
+
+        if (Array.isArray(nodes)) {
+            nodes.forEach(node => {
+                const option = document.createElement("option");
+                option.value = node.id;
+                option.textContent = `${"—".repeat(node.depth)} ${node.name} (${node.type})`;
+                selector.appendChild(option);
+            });
+        } else {
+            flattenTree(nodes, selector, 0);
+        }
+    }
+
+    function flattenTree(node, selector, depth) {
+        const option = document.createElement("option");
+        option.value = node.id;
+        let type = node.children ? "PLAN" : "ACTION";
+        option.textContent = `${"—".repeat(depth)} ${node.name} (${type})`;
+        selector.appendChild(option);
+
+        if (node.children) {
+            node.children.forEach(child => flattenTree(child, selector, depth + 1));
+        }
     }
 
     // function renderAllocations(action) {
@@ -819,7 +1009,7 @@
         <form onsubmit="addAllocation(event)">
             <select id="allocResourceType"></select>
 
-            <input id="allocQty" type="number" step="any" placeholder="Quantity">
+            <input id="allocQty" type="number" step="any" placeholder="Quantity for Consumables">
 
             <select id="allocKind">
                 <option value="GENERAL">GENERAL</option>
@@ -827,8 +1017,8 @@
             </select>
 
             <input id="allocAssetId" placeholder="Asset ID (optional)">
-            <input id="allocStart" type="date">
-            <input id="allocEnd" type="date">
+            <input id="allocStart" type="datetime-local">
+            <input id="allocEnd" type="datetime-local">
 
             <button type="submit">Add Allocation</button>
         </form>
@@ -851,6 +1041,12 @@
 </div>
 
 <div id="plans" class="container hidden">
+
+    <div id="depthControl">
+        <label>Depth Limit: <span id="depth-label">-</span></label>
+        <input type="range" id="depth-slider" min="0" max="10" value="10">
+    </div>
+
     <h2>Plans</h2>
     <table id="planTable">
         <thead>
@@ -864,6 +1060,30 @@
     <button onclick="showPage('plans')">Back</button>
     <h2>Plan Tree</h2>
     <div id="planTree"></div>
+
+    <div id="metricsPanel">
+        <h3>Metrics</h3>
+        <div>
+            <select id="nodeSelector">
+                <option value="">-- Select a node --</option>
+            </select>
+            <button onclick="submitMetrics()">Get Metrics</button>
+        </div>
+        <table>
+            <tr>
+                <td>Completion Ratio</td>
+                <td id="completionRatio">-</td>
+            </tr>
+            <tr>
+                <td>Total Cost</td>
+                <td id="totalCost">-</td>
+            </tr>
+            <tr>
+                <td>Risk Score</td>
+                <td id="riskScore">-</td>
+            </tr>
+        </table>
+    </div>
 </div>
 
 
@@ -911,6 +1131,17 @@
     </table>
 
     <h3>Entries</h3>
+    <div>
+        <label>
+            <input type="radio" name="entryFilter" value="all" checked> Show all
+        </label>
+        <label>
+            <input type="radio" name="entryFilter" value="consumable"> Show consumable entries
+        </label>
+        <label>
+            <input type="radio" name="entryFilter" value="asset"> Show asset entries
+        </label>
+    </div>
     <table id="entries">
         <thead>
         <tr><th>Amount</th><th>Charged</th><th>Booked</th><th>Action</th></tr>
@@ -925,6 +1156,16 @@
     <h3>Plan Report</h3>
     <select id="reportPlanSelect">
         <option value="">Select Plan</option>
+    </select>
+    <select id="reportStatusFilter">
+        <option value="">All Statuses</option>
+        <option value="PROPOSED">Proposed</option>
+        <option value="IN_PROGRESS">In Progress</option>
+        <option value="SUSPENDED">Suspended</option>
+        <option value="COMPLETED">Completed</option>
+        <option value="ABANDONED">Abandoned</option>
+        <option value="PENDING_APPROVAL">Pending Approval</option>
+        <option value="REOPENED">Reopened</option>
     </select>
     <button onclick="triggerReport()">Load Report</button>
     <div id="reportOutput"></div>
@@ -969,6 +1210,7 @@
         </select>
 
         <input id="rtUnit" placeholder="Unit (e.g. hours, kg)">
+        <input id="unitCost" placeholder="Unit Cost">
 
         <button type="submit">Create Resource Type</button>
     </form>

@@ -30,7 +30,9 @@ public class InProgressState implements ActionState {
 
         implemented.setActualStart(new Date());
 
-        ctx.getResourceAccess().saveImplementedAction(implemented);
+        ctx.setImplementedAction(implemented);
+
+        //ctx.getResourceAccess().saveImplementedAction(implemented);
         ctx.getActionManager().generateLedgerEntries(implemented);
 
         ctx.setState(completedState);
@@ -55,6 +57,26 @@ public class InProgressState implements ActionState {
     @Override
     public void abandon(ActionContext ctx) {
         ctx.setState(abandonedState);
+    }
+
+    @Override
+    public void submitForApproval(ActionContext ctx) throws IllegalStateTransitionException {
+        throw new IllegalStateTransitionException();
+    }
+
+    @Override
+    public void approve(ActionContext ctx) throws IllegalStateTransitionException {
+        throw new IllegalStateTransitionException();
+    }
+
+    @Override
+    public void reject(ActionContext ctx) throws IllegalStateTransitionException {
+        throw new IllegalStateTransitionException();
+    }
+
+    @Override
+    public void reopen(ActionContext ctx) throws IllegalStateTransitionException {
+        throw new IllegalStateTransitionException();
     }
 
     @Override

@@ -90,7 +90,7 @@ public class Plan extends PlanNode {
 
     @Override
     public void accept(PlanNodeVisitor visitor) {
-        visitor.visit(this);
+        visitor.visitComposite(this);
         children.forEach(child -> child.accept(visitor));
     }
 }

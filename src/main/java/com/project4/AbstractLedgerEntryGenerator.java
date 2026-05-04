@@ -60,6 +60,7 @@ public abstract class AbstractLedgerEntryGenerator {
         e.setTransaction(tx);
 
         Account usage = resourceAccess.getUsageAccount(a.getAction());
+        usage.setResourceType(a.getResourceType());
         e.setAccount(usage);
 
         e.setAmount(Math.abs(a.getQuantity()));
@@ -99,16 +100,15 @@ public abstract class AbstractLedgerEntryGenerator {
         resourceAccess.saveEntry(w);
         resourceAccess.saveEntry(d);
 
-
-
-//        tx.getEntries().add(w);
-//        tx.getEntries().add(d);
-
         postingRuleEngine.applyRules(w);
         postingRuleEngine.applyRules(d);
-        createAuditEntry("Withdraw", w.getAccount().getId(), w.getId());
-        createAuditEntry("Deposit", d.getAccount().getId(), d.getId());
-
+        if(w.getAmount() < 0){
+            createAuditEntry("Withdraw", w.getAccount().getId(), w.getId());
+            createAuditEntry("Deposit", d.getAccount().getId(), d.getId());
+        }else{
+            createAuditEntry("Reverse Withdraw", w.getAccount().getId(), w.getId());
+            createAuditEntry("Reverse Deposit", d.getAccount().getId(), d.getId());
+        }
     }
 
     private void createAuditEntry(String event, Integer accountId, Integer entryId) {

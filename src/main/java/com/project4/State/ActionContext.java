@@ -46,7 +46,6 @@ public class ActionContext {
 
     private ImplementedAction implementedAction;
 
-    // transient transition data
     private String reason;
     private String actualParty;
     private String actualLocation;
@@ -81,6 +80,12 @@ public class ActionContext {
                 break;
             case "abandoned":
                 action.setStatus(ActionStatus.ABANDONED);
+                break;
+            case "reopened":
+                action.setStatus(ActionStatus.REOPENED);
+                break;
+            case "pending_approval":
+                action.setStatus(ActionStatus.PENDING_APPROVAL);
                 break;
         }
 

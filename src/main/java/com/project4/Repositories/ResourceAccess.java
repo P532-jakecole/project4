@@ -6,6 +6,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Repository;
 
+import java.time.Duration;
 import java.util.Date;
 import java.util.List;
 
@@ -32,14 +33,16 @@ public class ResourceAccess {
         return em.createQuery("from Plan", Plan.class).getResultList();
     }
 
-    public void createResourceType(String name, String kind, String unit){
+    public void createResourceType(String name, String kind, String unit, Double unitCost){
         ResourceType rt = new ResourceType();
         rt.setName(name);
         rt.setUnit(unit);
+        rt.setUnitCost(unitCost);
 
         Account account = createAccount(name, rt, AccountKind.POOL);
 
         Account alertAccount = createAccount(name + "_ALERT", rt, AccountKind.ALERT_MEMO);
+        alertAccount.setResourceType(rt);
         account.setAlertMemoAccount(alertAccount);
 
         rt.setPoolAccount(account);
@@ -206,11 +209,13 @@ public class ResourceAccess {
 
     public Account getUsageAccount(ProposedAction action) {
 
+        String accountName = "Usage Account For Action " + action.getId();
+
         List<Account> results = em.createQuery(
                         "select a from Account a where a.name = :actionName and a.kind = :kind",
                         Account.class
                 )
-                .setParameter("actionName", action.getName())
+                .setParameter("actionName", accountName)
                 .setParameter("kind", AccountKind.USAGE)
                 .getResultList();
 
@@ -294,10 +299,20 @@ public class ResourceAccess {
     public void createResourceAllocation(ProposedAction action, String kind, Date start, Date end, Double quantity, Integer resourceTypeId, Integer assetId){
         ResourceAllocation allocation = new ResourceAllocation();
         allocation.setAction(action);
-        allocation.setResourceType(getResourceType(resourceTypeId));
+
+        ResourceType rt = getResourceType(resourceTypeId);
+        allocation.setResourceType(rt);
+
+        if(rt.getKind() == ResourceKind.ASSET){
+            Duration duration = Duration.between(start.toInstant(), end.toInstant());
+            Double length = duration.toMillis() / 3_600_000.0;
+            allocation.setQuantity(length);
+        }else{
+            allocation.setQuantity(quantity);
+        }
+
         allocation.setAssetId(assetId);
         allocation.setStartTime(start);
-        allocation.setQuantity(quantity);
         allocation.setEndTime(end);
 
         AllocationKind ak = null;
@@ -327,10 +342,19 @@ public class ResourceAccess {
         suspension.setProposedAction(action);
 
         em.persist(suspension);
+        em.persist(suspension);
     }
 
     public void saveAuditLogEntry(AuditLogEntry entry){
         em.persist(entry);
+    }
+
+    public PlanNode getPlanNode(Integer id) {
+        PlanNode node = em.find(Plan.class, id);
+        if (node == null) {
+            node = em.find(ProposedAction.class, id);
+        }
+        return node;
     }
 
 

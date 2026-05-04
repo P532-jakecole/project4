@@ -26,10 +26,11 @@ public class ResourceTypeManager {
         String name = (String) inputs.get("name");
         String kind = (String) inputs.get("kind");
         String unit = (String) inputs.get("unit");
+        Double unitCost = Double.parseDouble((String) inputs.get("unitCost"));
 //        Integer accountId = (Integer) inputs.get("accountId");
 //        Account account = resourceAccess.getAccount(accountId);
 
 
-        resourceAccess.createResourceType(name, kind, unit);
+        resourceAccess.createResourceType(name, kind, unit, unitCost);
     }
 }

@@ -39,6 +39,26 @@ public class SuspendedState implements ActionState {
     }
 
     @Override
+    public void submitForApproval(ActionContext ctx) throws IllegalStateTransitionException {
+        throw new IllegalStateTransitionException();
+    }
+
+    @Override
+    public void approve(ActionContext ctx) throws IllegalStateTransitionException {
+        throw new IllegalStateTransitionException();
+    }
+
+    @Override
+    public void reject(ActionContext ctx) throws IllegalStateTransitionException {
+        throw new IllegalStateTransitionException();
+    }
+
+    @Override
+    public void reopen(ActionContext ctx) throws IllegalStateTransitionException {
+        throw new IllegalStateTransitionException();
+    }
+
+    @Override
     public String name() {
         return "SUSPENDED";
     }

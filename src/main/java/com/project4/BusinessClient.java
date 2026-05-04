@@ -6,6 +6,7 @@ import com.project4.Managers.*;
 import com.project4.State.IllegalStateTransitionException;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
 
@@ -69,13 +70,13 @@ public class BusinessClient {
     }
 
     @GetMapping("/plans/{id}")
-    public Plan getPlan(@PathVariable Integer id) {
-        return planManager.getPlanTree(id);
+    public Object getPlan(@PathVariable Integer id, @RequestParam(required = false, defaultValue = "-1") int depthLimit) {
+        return planManager.getPlanTree(id, depthLimit);
     }
 
     @GetMapping("/plans/{id}/report")
-    public List<Map<String, Object>> getPlanReport(@PathVariable Integer id) {
-        return planManager.generateDepthFirstReport(id);
+    public List<Map<String, Object>> getPlanReport(@PathVariable Integer id, @RequestParam(required = false) String status) {
+        return planManager.generateDepthFirstReport(id, status);
     }
 
     @GetMapping("/plans")
@@ -110,6 +111,28 @@ public class BusinessClient {
         actionManager.completeAction(id);
     }
 
+    @PostMapping("/actions/{id}/approve")
+    public void approveAction(@PathVariable Integer id, @RequestBody Map<String, String> body) throws IllegalStateTransitionException {
+        String party = body.get("party");
+        String location = body.get("location");
+        actionManager.approveAction(id, party, location);
+    }
+
+    @PostMapping("/actions/{id}/reject")
+    public void rejectAction(@PathVariable Integer id) throws IllegalStateTransitionException {
+        actionManager.rejectAction(id);
+    }
+
+    @PostMapping("/actions/{id}/reopen")
+    public void reopenAction(@PathVariable Integer id) throws IllegalStateTransitionException {
+        actionManager.reopenAction(id);
+    }
+
+    @PostMapping("/actions/{id}/approval")
+    public void submitForApprovalAction(@PathVariable Integer id) throws IllegalStateTransitionException {
+        actionManager.submitForApprovalAction(id);
+    }
+
     @PostMapping("/actions/{id}/suspend")
     public void suspendAction(@PathVariable Integer id, @RequestBody(required = false) Map<String, String> body) throws IllegalStateTransitionException {
         String reason = body != null ? body.get("reason") : null;
@@ -127,7 +150,7 @@ public class BusinessClient {
     }
 
     @PostMapping("/actions/{id}/allocations")
-    public void attachAllocation(@PathVariable Integer id, @RequestBody Map<String, Object> allocation) {
+    public void attachAllocation(@PathVariable Integer id, @RequestBody Map<String, Object> allocation) throws ParseException {
         actionManager.attachResourceAllocation(id, allocation);
     }
 
@@ -154,5 +177,10 @@ public class BusinessClient {
     @GetMapping("/audit-log")
     public List<AuditLogEntry> getAuditLog() {
         return auditLogManager.getAuditLog();
+    }
+
+    @GetMapping("/plans/{id}/metrics")
+    public Map<String, Object> getPlanMetrics(@PathVariable Integer id) {
+        return planManager.getMetrics(id);
     }
 }

@@ -5,5 +5,7 @@ public enum ActionStatus {
     SUSPENDED,
     COMPLETED,
     ABANDONED,
-    PROPOSED
+    PROPOSED,
+    PENDING_APPROVAL,
+    REOPENED
 }

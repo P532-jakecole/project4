@@ -45,7 +45,7 @@ public class ProposedAction extends PlanNode {
 
     @Override
     public void accept(PlanNodeVisitor visitor) {
-        visitor.visit(this);
+        visitor.visitLeaf(this);
     }
 
     public Date getTimeRef() {

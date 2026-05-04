@@ -6,5 +6,9 @@ public interface ActionState {
     void resume(ActionContext ctx) throws IllegalStateTransitionException;
     void complete(ActionContext ctx) throws IllegalStateTransitionException;
     void abandon(ActionContext ctx) throws IllegalStateTransitionException;
+    void submitForApproval(ActionContext ctx) throws IllegalStateTransitionException;
+    void approve(ActionContext ctx) throws IllegalStateTransitionException;
+    void reject(ActionContext ctx) throws IllegalStateTransitionException;
+    void reopen(ActionContext ctx) throws IllegalStateTransitionException;
     String name();
 }
